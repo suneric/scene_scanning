@@ -10,30 +10,32 @@
       <origin xyz="0.28 0 0" rpy="0 0 0"/>
     </xacro:realsense_camera>
 
-    <!-- Quadrotor Gazebo Plugins -->
-    <xacro:include filename="$(find hector_quadrotor_gazebo)/urdf/quadrotor_sensors.gazebo.xacro" />
-    <xacro:include filename="$(find hector_quadrotor_gazebo)/urdf/quadrotor_propulsion.gazebo.xacro" />
-    <xacro:include filename="$(find hector_quadrotor_gazebo)/urdf/quadrotor_aerodynamics.gazebo.xacro" />
-    <xacro:quadrotor_sensors />
-    <xacro:quadrotor_propulsion />
-    <xacro:quadrotor_aerodynamics />
-
     <xacro:arg name="robot_ns" default="" />
     <xacro:arg name="world_frame" default="world" />
     <xacro:arg name="base_link_frame" default="base_link" />
+
+    <xacro:include filename="$(find hector_quadrotor_gazebo)/urdf/quadrotor_sensors.gazebo.xacro" />
+    <xacro:quadrotor_sensors />
+
+    <xacro:include filename="$(find hector_quadrotor_gazebo)/urdf/quadrotor_propulsion.gazebo.xacro" />
+    <xacro:quadrotor_propulsion />
+
+    <xacro:include filename="$(find hector_quadrotor_gazebo)/urdf/quadrotor_aerodynamics.gazebo.xacro" />
+    <xacro:quadrotor_aerodynamics />
 
     <gazebo>
       <plugin name="quadrotor_controller" filename="libgazebo_ros_control.so">
         <controlPeriod>0.01</controlPeriod>
         <robotSimType>hector_quadrotor_controller_gazebo/QuadrotorHardwareSim</robotSimType>
-        <robotNamespace>$(arg robot_ns)/uav_control</robotNamespace>
+        <robotNamespace>$(arg robot_ns)</robotNamespace>
       </plugin>
     </gazebo>
 
     <gazebo>
       <plugin name="camera_controller" filename="libgazebo_ros_control.so">
-        <robotNamespace>$(arg robot_ns)/cam_control</robotNamespace>
         <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+        <robotNamespace>$(arg robot_ns)/cam_control</robotNamespace>
       </plugin>
     </gazebo>
+
 </robot>

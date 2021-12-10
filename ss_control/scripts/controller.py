@@ -16,115 +16,125 @@ from hector_uav_msgs.srv import EnableMotors
 
 #######################
 # controller for controlling the quadrotor pose and camera joint posetion
-class uav_cam_controller:
-    def __init__(self,robot_name="uav1",ns="agent1"):
-        self.robot_name = robot_name
-        self.ns = ns
-        self.camerapose = None
-        self.transform_util = QuadrotorTransform()
-        self.camerapose_sub = rospy.Subscriber(ns+'/camera_controller/state', JointControllerState, self._camerapose_callback)
-        self.camerapose_pub = rospy.Publisher(ns+'/camera_controller/command', Float64, queue_size=1)
+class UAVController:
+    def __init__(self,robotName="uav", robotNS=''):
+        self.robotName = robotName
+        self.robotNS = robotNS
 
-        self.pose_client = actionlib.SimpleActionClient(ns+"/action/pose", PoseAction)
-        self.landing_client = actionlib.SimpleActionClient(ns+"/action/landing", LandingAction)
+        self.camPose = None
+        self.camPoseSub = self.create_camera_pose_sub()
+        self.camPosePub = self.create_camera_pose_pub()
 
-        self.quadrotor_sub = rospy.Subscriber('/gazebo/model_states', ModelStates, self._quadrotor_callback)
-        self.quadrotor_pose = None
-        self.b_take_off = False
-        self.goal_pose = None
+        self.uavPose = None
+        self.uavPoseSub = self.create_uav_pose_sub()
+        self.poseClient = self.create_pose_client()
+        self.landingClient = self.create_landing_client()
 
-    def transform_q2c(self):
-        mat = self.transform_util.quadrotor2camera(self.quadrotor_pose,self.camerapose)
-        return mat
+        self.isTakeOff = False
+        self.goal = None
 
-    def camera_pose(self):
-        return self.camerapose
-    def uav_pose(self):
-        return self.quadrotor_pose
+        self.util = QuadrotorTransform()
 
-    def is_take_off(self):
-        return self.b_take_off
+    def create_camera_pose_sub(self):
+        topic = self.robotNS+'/cam_control/position/state'
+        return rospy.Subscriber(topic, JointControllerState, self._camera_pose_cb)
+
+    def _camera_pose_cb(self, data):
+        self.camPose = data.set_point
+
+    def create_camera_pose_pub(self):
+        topic = self.robotNS+'/cam_control/position/command'
+        return rospy.Publisher(topic, Float64, queue_size=1)
+
+    def create_uav_pose_sub(self):
+        topic = '/gazebo/model_states'
+        return rospy.Subscriber(topic, ModelStates, self._uav_cb)
+
+    def _uav_cb(self, data):
+        index = data.name.index(self.robotName)
+        self.uavPose = data.pose[index]
+
+    def create_pose_client(self):
+        topic = self.robotNS+'/action/pose'
+        return actionlib.SimpleActionClient(topic, PoseAction)
+
+    def create_landing_client(self):
+        topic = self.robotNS+'/action/landing'
+        return actionlib.SimpleActionClient(topic, LandingAction)
+
+    def _enable_motors(self, enable):
+        service = self.robotNS+'/enable_motors'
+        rospy.wait_for_service(service)
+        srv = rospy.ServiceProxy(service, EnableMotors)
+        srv.enable = enable
+        print("enable motors", enable)
 
     def takeoff(self, callback):
-        self.execute_camera_joint(1.0)
-
+        self.set_camera_joint(0.0)
         self._enable_motors('true')
-        pose = self.quadrotor_pose
+        pose = self.uavPose
         pose.position.z = 1.0
         goal = PoseGoal()
         goal.target_pose.header.stamp = rospy.Time.now()
-        goal.target_pose.header.frame_id = "world"
+        goal.target_pose.header.frame_id = self.robotName+"/world"
         goal.target_pose.pose = pose
-        self.pose_client.send_goal(goal)
-
-        self.goal_pose = pose
-        self.b_take_off = True
-
+        self.poseClient.send_goal(goal)
+        self.isTakeOff = True
+        self.goal = pose
         rate = rospy.Rate(10)
         while not self.is_goal_reached():
             rate.sleep()
         callback()
 
-    def landing(self):
-        self.execute_camera_joint(0.0)
-
+    def landing(self, callback):
+        self.set_camera_joint(0.0)
         goal = LandingGoal()
-        self.landing_client.send_goal(goal)
-
-        self.b_take_off = False
-        self.goal_pose = None
-
+        self.landingClient.send_goal(goal)
+        self.isTakeOff = False
+        self.goal = None
         self._enable_motors('false')
+        callback()
 
-    def execute_camera_joint(self,joint):
+    def set_camera_joint(self,joint):
         if (joint < -1.5708):
             joint = -1.5708
         elif (joint > 1.5708):
             joint = 1.5708
-        self.camerapose_pub.publish(joint)
+        self.camPosePub.publish(joint)
 
-    def execute_quadrotor_pose(self, pose, callback):
+    def fly_to(self, pose, callback):
         print("moving")
         goal = PoseGoal()
         goal.target_pose.header.stamp = rospy.Time.now()
-        goal.target_pose.header.frame_id = "world"
+        goal.target_pose.header.frame_id = self.robotName+"/world"
         goal.target_pose.pose = pose
-        self.pose_client.send_goal(goal)
-        self.goal_pose = pose
+        self.poseClient.send_goal(goal)
+        self.goal = pose
         rate = rospy.Rate(10)
         while not self.is_goal_reached():
             rate.sleep()
         callback()
 
-    ### private functions
-    def _enable_motors(self, enable):
-        rospy.wait_for_service(self.ns+'/enable_motors')
-        srv = rospy.ServiceProxy(self.ns+'/enable_motors', EnableMotors)
-        srv.enable = enable
-        print("enable motors")
-
-    def _quadrotor_callback(self, data):
-        index = data.name.index(self.robot_name) # the quadrotor pose index in /gazebo/model_states
-        self.quadrotor_pose = data.pose[index]
-
-    def _camerapose_callback(self, data):
-        self.camerapose = data.set_point
+    def is_take_off(self):
+        return self.isTakeOff
 
     def is_goal_reached(self):
         tolerance = 0.01
-        if abs(self.quadrotor_pose.position.x - self.goal_pose.position.x) > tolerance:
+        if abs(self.uavPose.position.x - self.goal.position.x) > tolerance:
             return False
-        elif abs(self.quadrotor_pose.position.y - self.goal_pose.position.y) > tolerance:
+        elif abs(self.uavPose.position.y - self.goal.position.y) > tolerance:
             return False
-        elif abs(self.quadrotor_pose.position.z - self.goal_pose.position.z) > tolerance:
+        elif abs(self.uavPose.position.z - self.goal.position.z) > tolerance:
             return False
-        # elif abs(self.quadrotor_pose.orientation.x - self.goal_pose.orientation.x) > tolerance:
-        #     return False
-        # elif abs(self.quadrotor_pose.orientation.y - self.goal_pose.orientation.y) > tolerance:
-        #     return False
-        # elif abs(self.quadrotor_pose.orientation.z - self.goal_pose.orientation.z) > tolerance:
-        #     return False
-        # elif abs(self.quadrotor_pose.orientation.w - self.goal_pose.orientation.w) > tolerance:
-        #    return False
         else:
            return True
+
+    def transform_q2c(self):
+        mat = self.util.quadrotor2camera(self.uavPose,self.camPose)
+        return mat
+
+    def camera_pose(self):
+        return self.camPose
+
+    def uav_pose(self):
+        return self.uavPose

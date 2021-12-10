@@ -13,12 +13,6 @@
   the other is for camera joint using a default ros controller
   There is no way to spawn two ros_controllers in one robot namespace
   -->
-  <include file="$(find ss_control)/launch/camera_controller.launch">
-    <arg name="robot_ns" value="$(arg robot_ns)"/>
-  </include>
-  <include file="$(find ss_control)/launch/quadrotor_controller.launch">
-    <arg name="robot_ns" value="$(arg robot_ns)"/>
-  </include>
   <include file="$(find ss_gazebo)/launch/spawn_quadrotor.launch">
     <arg name="robot_ns" value="$(arg robot_ns)"/>
     <arg name="name" value="$(arg name)"/>

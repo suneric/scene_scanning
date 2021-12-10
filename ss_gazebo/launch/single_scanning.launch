@@ -14,4 +14,6 @@
     </include>
   </group>
 
+  <include file="$(find ss_control)/launch/auto_scanning.launch"/>
+  <include file="$(find ss_data)/launch/data_process.launch"/>
 </launch>

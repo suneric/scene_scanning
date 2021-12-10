@@ -1,14 +1,13 @@
 <launch>
   <arg name="robot_ns" default=""/>
 
-  <rosparam ns="$(arg robot_ns)/uav_control" file="$(find hector_quadrotor_controllers)/params/controller.yaml" />
+  <rosparam ns="$(arg robot_ns)" command="load" file="$(find hector_quadrotor_controllers)/params/controller.yaml" />
   <rosparam file="$(find hector_quadrotor_controllers)/params/params.yaml" />
 
   <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="
-    --namespace=$(arg robot_ns)/uav_control position velocity attitude"/>
+    --namespace=$(arg robot_ns) position velocity attitude"/>
 
   <node name="estop_relay" pkg="topic_tools" type="relay" args="/estop estop">
     <param name="lazy" value="true" />
   </node>
-
 </launch>

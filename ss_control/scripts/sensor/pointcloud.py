@@ -3,10 +3,10 @@ import rospy
 import numpy as np
 from math import *
 import pcl
-from camera import realsense_d435
+from camera import RealSenseD435
 
 #######################
-class data_capture:
+class DataCapture:
     def __init__(self, camera, filepath):
         self.camera = camera
         self.ratio = self._frame_ratio()
@@ -17,13 +17,16 @@ class data_capture:
     # scan and point could process
     # input point could, matrix of camera to global
     # pose: [quadrotor_pose, camera_joint]
-    def scan_and_save(self,mat):
+    def scan_and_save(self,mat=None):
         pc = self.camera.point_cloud()
         if pc == None:
             return
 
-        #print(mat)
-        cloud = self._cloud_process(pc,mat)
+        if mat:
+            cloud = self._cloud_process(pc,mat)
+        else:
+            cloud = pc
+
         if cloud != None:
             print("save data.")
             self._save_cloud(cloud)
@@ -36,10 +39,9 @@ class data_capture:
         point_list = []
         for data in cloud:
             x,y,z,rgb=data[:4]
-            #if self._in_box(x,y,z,self._bbox()):
-            tp = np.dot(mat,np.array([x,y,z,1])) # transform point
-                ## tp is a 1x4 matrix
+            tp = np.dot(mat,np.array([x,y,z,1]))
             point_list.append([tp[0,0],tp[0,1],tp[0,2],rgb])
+
         if len(point_list) > 0:
             pcl_cloud = pcl.PointCloud_PointXYZRGB()
             pcl_cloud.from_list(point_list)
@@ -75,7 +77,6 @@ class data_capture:
         x_ratio = frame[0]*ps/f[0]
         y_ratio = frame[1]*ps/f[1]
         return [x_ratio,y_ratio]
-
 
     def _bbox(self):
         # need to consider the case of zero center distance

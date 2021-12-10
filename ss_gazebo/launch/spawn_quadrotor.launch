@@ -59,6 +59,14 @@
   </group>
   <remap from="pose" to="ground_truth_to_tf/pose"  if="$(arg use_ground_truth_for_control)" />
 
+  <!--load controller-->
+  <include file="$(find ss_control)/launch/camera_controller.launch">
+    <arg name="robot_ns" value="$(arg robot_ns)"/>
+  </include>
+  <include file="$(find ss_control)/launch/quadrotor_controller.launch">
+    <arg name="robot_ns" value="$(arg robot_ns)"/>
+  </include>
+
   <!-- load actions -->
   <include file="$(find hector_quadrotor_actions)/launch/actions.launch" />
 
@@ -66,6 +74,7 @@
   <arg name="motors" default="robbe_2827-34_epp1045" />
   <rosparam command="load" file="$(find hector_quadrotor_model)/param/quadrotor_aerodynamics.yaml" />
   <rosparam command="load" file="$(find hector_quadrotor_model)/param/$(arg motors).yaml" />
+
 
   <!-- push robot_description to factory and spawn robot in gazebo -->
   <node name="spawn_robot" pkg="gazebo_ros" type="spawn_model"

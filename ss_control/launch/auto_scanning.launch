@@ -1,4 +1,4 @@
 <launch>
-	<node name="ugv_auto_scanning" pkg="ss_control" type="auto_scanning.py"  output="screen">
+	<node name="uav_scanning" pkg="ss_control" type="scanning.py"  output="screen">
   </node>
 </launch>

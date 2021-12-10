@@ -2,7 +2,7 @@
 import numpy as np
 import cv2 as cv
 
-class depth_img:
+class DepthImage:
     def __init__(self, depth):
         self.depth = depth
 
@@ -40,10 +40,10 @@ class depth_img:
         return unit_n
 
     def _draw_normals(self, size=3):
-        if not self.cv_depth.shape:
+        if not self.depth.shape:
             return None
         else:
-            img = self.cv_depth
+            img = self.depth
             w,h = img.shape
             print(w,h)
             normals = np.zeros((w,h,3),dtype=np.uint8)
@@ -52,7 +52,7 @@ class depth_img:
                     normals[x,y] = self.normal(x,y,size)
             return normals
 
-class color_img:
+class ColorImage:
     def __init__(self, color):
         self.color = color
 
