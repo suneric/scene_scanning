@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+
+<launch>
+  <arg name="robot_ns" default=""/>
+  <arg name="name" default="uav"/>
+  <arg name="tf_prefix" default="uav"/>
+  <arg name="model" default="$(find ss_description)/urdf/quadrotor_with_camera.urdf.xacro"/>
+  <arg name="x" default="0.0"/>
+  <arg name="y" default="0.0"/>
+
+  <!-- load controllers
+  we have two different controllers, one for quadrotor which is customized in hector_quadrotor package
+  the other is for camera joint using a default ros controller
+  There is no way to spawn two ros_controllers in one robot namespace
+  -->
+  <include file="$(find ss_control)/launch/camera_controller.launch">
+    <arg name="robot_ns" value="$(arg robot_ns)"/>
+  </include>
+  <include file="$(find ss_control)/launch/quadrotor_controller.launch">
+    <arg name="robot_ns" value="$(arg robot_ns)"/>
+  </include>
+  <include file="$(find ss_gazebo)/launch/spawn_quadrotor.launch">
+    <arg name="robot_ns" value="$(arg robot_ns)"/>
+    <arg name="name" value="$(arg name)"/>
+    <arg name="tf_prefix" value="$(arg tf_prefix)"/>
+    <arg name="model" value="$(arg model)"/>
+    <arg name="x" value="$(arg x)"/>
+    <arg name="y" value="$(arg y)"/>
+  </include>
+
+</launch>

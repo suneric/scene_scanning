@@ -1,0 +1,126 @@
+newmtl Material__123
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.984314 0.984314 0.984314
+Ks 0.984314 0.984314 0.984314
+Km 0.00216
+map_Kd /Maps/ArchM_73_01.jpg
+map_refl /Maps/ArchM_73_01_Spec.jpg
+map_Bump /Maps/ArchM_73_01_DIF_Hrom.jpg
+
+newmtl ArchM73_Engine_B
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.984314 0.984314 0.984314
+Ks 0.984314 0.984314 0.984314
+Km 0.00216
+map_Kd /Maps/ArchM_73_01.jpg
+map_refl /Maps/ArchM_73_01_Spec.jpg
+map_Bump /Maps/ArchM_73_01_DIF_Hrom.jpg
+
+newmtl Material__124
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.984314 0.984314 0.984314
+Ks 0.984314 0.984314 0.984314
+Km 0.00216
+map_Kd /Maps/ArchM_73_01_DIF_Hrom.jpg
+map_refl /Maps/ArchM_73_01_Spec.jpg
+map_Bump /Maps/ArchM_73_01_DIF_Hrom.jpg
+
+newmtl Material__127
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 0.956863 0.956863 0.956863
+Km 0.02
+
+newmtl Material__128
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.984314 0.984314 0.984314
+Ks 0.984314 0.984314 0.984314
+Km 0.00216
+map_Kd /Maps/ArchM_73_01.jpg
+map_refl /Maps/ArchM_73_01_Spec.jpg
+map_Bump /Maps/ArchM_73_01_DIF_Hrom.jpg
+
+newmtl Material__25
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.984314 0.984314 0.984314
+Ks 0.984314 0.984314 0.984314
+Km 0.00216
+map_Kd /Maps/ArchM_73_01.jpg
+map_refl /Maps/ArchM_73_01_Spec.jpg
+map_Bump /Maps/ArchM_73_01_DIF_Hrom.jpg
+
+newmtl Material__129
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 0.513726 0.513726 0.513726
+Km 0.02
+
+newmtl Material__133
+d 1
+Ns 0.983333
+Ni 0
+Ka 0 0 0
+Kd 0.447059 0.466667 0.486275
+Ks 1 1 1
+Km 0.02
+
+newmtl Material__132
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 0.956863 0.956863 0.956863
+Km 0.02
+
+newmtl Material__130
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0.984314 0.984314 0.984314
+Ks 0.984314 0.984314 0.984314
+Km 0.00216
+map_Kd /Maps/ArchM_73_01.jpg
+map_refl /Maps/ArchM_73_01_Spec.jpg
+map_Bump /Maps/ArchM_73_01_DIF_Hrom.jpg
+
+newmtl Material__1270
+d 0.75
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 1 0.968627 0.968627
+Km 0.02
+
+newmtl Material__1280
+d 1
+Ns 0.95
+Ni 0
+Ka 0 0 0
+Kd 0 0 0
+Ks 0.956863 0.956863 0.956863
+Km 0.02
+
