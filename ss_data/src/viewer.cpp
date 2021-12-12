@@ -14,30 +14,18 @@ PCLViewer::PCLViewer(const std::string& title)
   m_viewer = new pcl::visualization::PCLVisualizer(title);
   m_viewer->initCameraParameters();
   m_viewer->setSize(600,480);
-  m_ptCloud = nullptr;
-  // m_viewer->setBackgroundColor(0.618,0.618,0.618);
+  m_viewer->addCoordinateSystem (1.0, "cloud", 0);
   m_viewer->setBackgroundColor(1,1,1);
 }
 
 PCLViewer::~PCLViewer()
 {
   delete m_viewer;
-  m_ptCloud = nullptr;
 }
 
 bool PCLViewer::IsStop() const
 {
   return m_viewer->wasStopped();
-}
-
-int PCLViewer::CreateViewPort(double xmin,double ymin,double xmax,double ymax)
-{
-  int vp(0);
-  m_viewer->createViewPort(xmin,ymin,xmax,ymax,vp);
-  //m_viewer->setBackgroundColor(0.618,0.618,0.618,vp);
-  m_viewer->setBackgroundColor(1,1,1,vp);
-  m_viewer->addCoordinateSystem(3,"global",vp);
-  return vp;
 }
 
 void PCLViewer::AddPointCloud(const WSPointCloudPtr cloud, int vp)
@@ -112,54 +100,6 @@ void PCLViewer::Spin() const
   m_viewer->spin();
 }
 
-WSPointCloudPtr PCLViewer::PointCloud()
-{
-  return m_ptCloud;
-}
-
-WSPointCloudPtr PCLViewer::LoadPointCloud(const std::string& dir)
-{
-  WSPointCloudPtr cloud(new WSPointCloud());
-
-  std::vector<std::string> allfiles;
-  boost::filesystem::directory_iterator itr(dir);
-  for (; itr != boost::filesystem::directory_iterator(); ++itr)
-  {
-    if (boost::filesystem::is_regular_file(itr->status()));
-      allfiles.push_back(itr->path().string());
-  }
-
-  int all = allfiles.size();
-  if (all == 0)
-    return nullptr;
-
-  int i = 0;
-
-  for (const auto& file : allfiles)
-  {
-    i++;
-    std::cout << "pcl == load " << i << "/" << all << " point cloud from " << file << std::endl;
-    WSPointCloudPtr temp(new WSPointCloud());
-    int res = pcl::io::loadPCDFile(file, *temp);
-    if(res < 0)
-        std::cout << "pcl == failed to load point cloud." << std::endl;
-    *cloud += *temp;
-   }
-
-   return cloud;
-}
-
-bool PCLViewer::SavePointCloud(const WSPointCloudPtr cloud, const std::string& dir)
-{
-  if (cloud == nullptr)
-    return false;
-
-  std::string filePath = dir+"point_cloud.pcd";
-  int res = pcl::io::savePCDFileASCII(filePath, *cloud);
-  if (res >= 0)
-    std::cout << "save as " << filePath << std::endl;
-  return res >= 0;
-}
 
 void PCLViewer::AddCube(const WSPoint& point, double s, const std::string& cubeName, double r,double g, double b, int vp)
 {

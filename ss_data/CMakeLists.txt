@@ -124,6 +124,7 @@ include_directories(
 # )
 
 set(TARGET_H
+    include/filter.h
     include/viewer.h
     include/process.h
     )
@@ -132,6 +133,7 @@ set(TARGET_SRC
     src/main.cpp
     src/viewer.cpp
     src/process.cpp
+    src/filter.cpp
     )
 
 add_definitions(${PCL_DEFINITIONS})

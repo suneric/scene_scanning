@@ -1,5 +1,6 @@
 #include <vector>
 #include "process.h"
+#include "filter.h"
 #include <boost/make_shared.hpp>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
@@ -39,34 +40,60 @@ PCLProcess::PCLProcess()
   m_cloud = WSPointCloudPtr(new WSPointCloud);
   m_globalTransform = Eigen::Matrix4f::Identity();
   m_cloudList.clear();
+  m_viewpointList.clear();
 }
 
 PCLProcess::~PCLProcess()
 {
 }
 
-WSPointCloudPtr PCLProcess::Registration(const WSPointCloudPtr cloud)
+bool PCLProcess::Registration()
 {
-  m_cloudList.push_back(cloud);
-  if (m_cloudList.size() < 2)
-    return cloud;
+  size_t vpCount = m_viewpointList.size();
+  size_t ptCount = m_cloudList.size();
+  if (vpCount == 0 || ptCount == 0 || vpCount != ptCount)
+    return false;
 
-  Eigen::Matrix4f pairTransform;
-  WSPointCloudPtr temp (new WSPointCloud);
-  WSPointCloudPtr source = m_cloudList[m_cloudList.size()-2];
-  PairAlign(source, cloud, temp, pairTransform, true);
+  std::cout << "data count" << ptCount << '\n';
 
-  WSPointCloudPtr result (new WSPointCloud);
-  pcl::transformPointCloud (*temp, *result, m_globalTransform);
-  m_globalTransform *= pairTransform;
-  *m_cloud += *result;
+  // filter point cloud
+  PCLFilter filter;
+  WSPointCloudPtr cloud = m_cloudList[ptCount-1];
+  cloud = filter.FilterPCLPoint(cloud, 0.01);
 
-  return m_cloud;
+  // transform point cloud to global frame
+  std::vector<double> vpMat = m_viewpointList[ptCount-1];
+  Eigen::Matrix4f trans = Eigen::Matrix4f::Identity();
+  for (int i = 0; i < 4; ++i)
+    for (int j = 0; j < 4; ++j)
+      trans(i,j) = vpMat[i*4+j];
+
+  WSPointCloudPtr tCloud (new WSPointCloud);
+  pcl::transformPointCloud (*cloud, *tCloud, trans);
+  // merge point cloud to global point cloud;
+
+  // filter pt in z
+  tCloud = filter.FilterPassThrough(tCloud,"z",0.05,10);
+  *m_cloud += *tCloud;
+
+  m_viewpointList.pop_back();
+  m_cloudList.pop_back();
+
+  return true;
 }
 
 WSPointCloudPtr PCLProcess::PointCloud() const
 {
   return m_cloud;
+}
+
+void PCLProcess::AddViewPoint(const std::vector<double>& vp)
+{
+  m_viewpointList.push_back(vp);
+}
+void PCLProcess::AddPointCloud(const WSPointCloudPtr& cloud)
+{
+  m_cloudList.push_back(cloud);
 }
 
 

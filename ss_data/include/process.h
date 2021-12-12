@@ -2,6 +2,7 @@
 #define _SSDATA_PCL_PROCESS_H_
 
 #include "viewer.h"
+#include "std_msgs/Float64MultiArray.h"
 
 namespace ssv3d
 {
@@ -11,8 +12,11 @@ namespace ssv3d
     PCLProcess();
     ~PCLProcess();
 
+    void AddViewPoint(const std::vector<double>& vp);
+    void AddPointCloud(const WSPointCloudPtr& cloud);
+
     WSPointCloudPtr PointCloud() const;
-    WSPointCloudPtr Registration(const WSPointCloudPtr cloud);
+    bool Registration();
     void PairAlign (const WSPointCloudPtr cloud_src,
       WSPointCloudPtr cloud_tgt,
       WSPointCloudPtr output,
@@ -22,6 +26,7 @@ namespace ssv3d
   private:
     WSPointCloudPtr m_cloud;
     Eigen::Matrix4f m_globalTransform;
+    std::vector<std::vector<double> > m_viewpointList;
     std::vector<WSPointCloudPtr> m_cloudList;
   };
 };

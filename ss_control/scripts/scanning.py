@@ -5,6 +5,7 @@ from math import *
 from geometry_msgs.msg import Pose
 from sensor_msgs.msg import PointCloud2
 import std_msgs.msg
+from std_msgs.msg import Float64MultiArray, MultiArrayDimension
 import sensor_msgs.point_cloud2 as pc2
 import transform
 
@@ -14,7 +15,10 @@ from sensor.image import DepthImage, ColorImage
 
 
 def create_trajectoy():
-    trajectory = [(3.0,3.0,3.0,3.14,0.3),(3.0,0,3.0,3,0.3),(1.0,-3.0,3.0,1.57,0.3)]
+    trajectory = [(3.0,0,5.0,3.14,1.2),
+                  (2.0,0,5.0,3.14,1.3),
+                  (1.0,0,5.0,3.14,1.4),
+                  (0.0,0,5.0,3.14,1.5)]
     return trajectory
 
 
@@ -28,12 +32,17 @@ class AutoScanning:
         self.status = 'ready'
 
         self.dataPub = self.create_data_pub(self.controller.robotName)
+        self.posePub = self.create_pose_pub(self.controller.robotName)
 
         self.trajectory = create_trajectoy()
 
     def create_data_pub(self, robotName):
         topic = robotName+'/pointcloud'
         return rospy.Publisher(topic, PointCloud2, queue_size=1)
+
+    def create_pose_pub(self, robotName):
+        topic = robotName+'/viewpoint'
+        return rospy.Publisher(topic, Float64MultiArray, queue_size=1)
 
     def landing(self):
         self.controller.landing(self._landing_cb)
@@ -75,11 +84,30 @@ class AutoScanning:
 
     def _scanning(self):
         print("scanning.")
-        pc = self.camera.point_cloud()
+        vp = self.viewpoint()
+        pc = self.pointcloud()
         if not pc:
             print("no data acuired.")
         else:
+            self.posePub.publish(vp)
             self.dataPub.publish(pc)
+
+    def viewpoint(self):
+        mat = self.controller.transform_q2c()
+        vp = Float64MultiArray()
+        vp.layout.dim.append(MultiArrayDimension())
+        vp.layout.dim.append(MultiArrayDimension())
+        vp.layout.dim[0].size=4
+        vp.layout.dim[1].size=4
+        vp.layout.dim[0].stride=4*4
+        vp.layout.dim[1].stride=4
+        vp.layout.data_offset=0
+        vp.data = mat.flatten().tolist()[0]
+        print(vp.data)
+        return vp
+
+    def pointcloud(self):
+        return self.camera.point_cloud()
 
     def goal(self,goalPose):
         pose = Pose()

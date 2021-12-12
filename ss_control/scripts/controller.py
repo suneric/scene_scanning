@@ -10,7 +10,7 @@ from gazebo_msgs.msg import ModelStates
 from control_msgs.msg import JointControllerState
 import actionlib
 from actionlib_msgs.msg import GoalStatus
-from std_msgs.msg import Float64
+from std_msgs.msg import Float64, Float64MultiArray, MultiArrayDimension
 from hector_uav_msgs.msg import PoseAction, TakeoffAction, LandingAction, PoseGoal, LandingGoal
 from hector_uav_msgs.srv import EnableMotors
 

@@ -16,17 +16,33 @@ void DataCallback(const sensor_msgs::PointCloud2ConstPtr& msg)
   pcl_conversions::toPCL(*msg, data);
   WSPointCloudPtr cloud(new WSPointCloud);
   pcl::fromPCLPointCloud2(data,*cloud);
-  WSPointCloudPtr res = processor.Registration(cloud);
-  viewer.AddPointCloud(res);
-  viewer.SpinOnce();
+  processor.AddPointCloud(cloud);
+  bool res = processor.Registration();
+  if (res)
+  {
+    viewer.AddPointCloud(processor.PointCloud());
+  }
+}
+
+void PoseCallback(const std_msgs::Float64MultiArray::ConstPtr& msg)
+{
+  processor.AddViewPoint(msg->data);
 }
 
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "data_process");
   ros::NodeHandle nh;
-  std::string topic("/uav1/pointcloud");
-  ros::Subscriber sub = nh.subscribe<sensor_msgs::PointCloud2>(topic,1,DataCallback);
-  ros::spin();
+  std::string vpTopic("/uav1/viewpoint");
+  ros::Subscriber vpSub = nh.subscribe<std_msgs::Float64MultiArray>(vpTopic,1,PoseCallback);
+  std::string ptTopic("/uav1/pointcloud");
+  ros::Subscriber dataSub = nh.subscribe<sensor_msgs::PointCloud2>(ptTopic,1,DataCallback);
+  ros::Rate r(10);
+  while(!viewer.IsStop())
+  {
+    ros::spinOnce();
+    viewer.SpinOnce();
+  }
+
   return 0;
 }

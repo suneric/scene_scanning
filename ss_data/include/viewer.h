@@ -31,12 +31,6 @@ namespace ssv3d
     PCLViewer(const std::string& title);
     ~PCLViewer();
 
-    WSPointCloudPtr PointCloud();
-    WSPointCloudPtr LoadPointCloud(const std::string& dir);
-    bool SavePointCloud(const WSPointCloudPtr cloud, const std::string& dir);
-
-    int CreateViewPort(double xmin,double ymin,double xmax,double ymax);
-
     void AddPointCloud(const WSPointCloudPtr cloud, int viewport=0);
     void AddNormals(const WSPointCloudPtr cloud, const WSPointCloudNormalPtr normal, int size, double arrow, int viewport=0);
     void AddMesh(const pcl::PolygonMesh& mesh);
