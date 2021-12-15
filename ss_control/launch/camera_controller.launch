@@ -1,6 +1,15 @@
 <launch>
+  <!-- load controllers
+  we have two different controllers, one for quadrotor which is customized in hector_quadrotor package
+  the other is for camera joint using a default ros controller
+  There is no way to spawn two ros_controllers in one robot namespace
+  -->
   <arg name="robot_ns" default=""/>
   <rosparam ns="$(arg robot_ns)/cam_control" file="$(find ss_control)/config/controller.yaml" command="load"/>
   <node name="camera_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen"
-    args="--namespace=$(arg robot_ns)/cam_control position"/>
+    args="--namespace=$(arg robot_ns)/cam_control position joint_state"/>
+
+  <!--by adding a namespace, the tf link between -->
+  <node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" args="1 0 0 0 0 0 1 $(arg robot_ns)/base_fixed_link $(arg robot_ns)/camera_link 100" />
+
 </launch>

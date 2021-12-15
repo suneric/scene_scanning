@@ -33,6 +33,7 @@
 
     <gazebo>
       <plugin name="camera_controller" filename="libgazebo_ros_control.so">
+        <controlPeriod>0.01</controlPeriod>
         <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
         <robotNamespace>$(arg robot_ns)/cam_control</robotNamespace>
       </plugin>

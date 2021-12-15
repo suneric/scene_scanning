@@ -1,4 +1,9 @@
 # Position Controllers ---------------------------------------
+# Publish all joint states -----------------------------------
+joint_state:
+  type: joint_state_controller/JointStateController
+  publish_rate: 50
+
 position:
   type: effort_controllers/JointPositionController
   joint: camera_joint

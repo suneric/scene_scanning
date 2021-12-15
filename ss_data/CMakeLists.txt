@@ -124,6 +124,7 @@ include_directories(
 # )
 
 set(TARGET_H
+    include/octomap.h
     include/filter.h
     include/viewer.h
     include/process.h
@@ -134,6 +135,7 @@ set(TARGET_SRC
     src/viewer.cpp
     src/process.cpp
     src/filter.cpp
+    src/octomap.cpp
     )
 
 add_definitions(${PCL_DEFINITIONS})

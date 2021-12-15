@@ -103,7 +103,6 @@ class AutoScanning:
         vp.layout.dim[1].stride=4
         vp.layout.data_offset=0
         vp.data = mat.flatten().tolist()[0]
-        print(vp.data)
         return vp
 
     def pointcloud(self):

@@ -32,11 +32,12 @@ namespace ssv3d
     ~PCLViewer();
 
     void AddPointCloud(const WSPointCloudPtr cloud, int viewport=0);
+    void AddCube(const WSPoint& point, double s, int id, double r,double g, double b, int viewport=0);
+    void AddArrow(const WSPoint& pt, const WSNormal& normal, double length, int id, double r,double g, double b, int viewport=0);
+    void AddCoordinateSystem(const Eigen::Affine3f& camPose, int idIndex, double scale=1.0, int viewport=0, bool removeall=false);
+
     void AddNormals(const WSPointCloudPtr cloud, const WSPointCloudNormalPtr normal, int size, double arrow, int viewport=0);
     void AddMesh(const pcl::PolygonMesh& mesh);
-    void AddArrows(const WSPointCloudPtr cloud, const WSPointCloudNormalPtr normal, double length, int viewport=0);
-    void AddCoordinateSystem(const Eigen::Affine3f& camPose, int idIndex, double scale=1.0, int viewport=0, bool removeall=false);
-    void AddCube(const WSPoint& point, double s, const std::string& id, double r,double g, double b, int viewport=0);
     void AddText(const std::string& text, const std::string& id, int viewport=0);
     void AddLine(const WSPoint& startPt, const WSPoint& endPt, int idx, double r,double g, double b, int viewport=0);
     void AddPolygon(const WSPointCloudPtr& polygon, const std::string& id, double r, double g, double b, int viewport=0);
@@ -47,7 +48,6 @@ namespace ssv3d
 
   private:
     pcl::visualization::PCLVisualizer* m_viewer;
-    WSPointCloudPtr m_ptCloud;
   };
 
 };

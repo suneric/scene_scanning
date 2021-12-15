@@ -16,4 +16,5 @@
 
   <include file="$(find ss_control)/launch/auto_scanning.launch"/>
   <include file="$(find ss_data)/launch/data_process.launch"/>
+  <!-- <include file="$(find ss_control)/launch/octomap_mapping.launch"/> -->
 </launch>

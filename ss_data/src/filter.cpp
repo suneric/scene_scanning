@@ -20,8 +20,8 @@ WSPointCloudPtr PCLFilter::FilterPCLPointInBBox(const WSPointCloudPtr cloud, con
     return nullptr;
 
   pcl::CropBox<WSPoint> boxFilter(true);
-  boxFilter.setMin(Eigen::Vector4f(bbox[0], bbox[2], bbox[4], 1.0));
-  boxFilter.setMax(Eigen::Vector4f(bbox[1], bbox[3], bbox[5], 1.0));
+  boxFilter.setMin(Eigen::Vector4f(bbox[0], bbox[1], bbox[2], 1.0));
+  boxFilter.setMax(Eigen::Vector4f(bbox[3], bbox[4], bbox[5], 1.0));
   boxFilter.setInputCloud(cloud);
   boxFilter.setNegative(bFilter);
   std::vector<int> indices;

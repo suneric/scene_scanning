@@ -14,8 +14,9 @@ PCLViewer::PCLViewer(const std::string& title)
   m_viewer = new pcl::visualization::PCLVisualizer(title);
   m_viewer->initCameraParameters();
   m_viewer->setSize(600,480);
-  m_viewer->addCoordinateSystem (1.0, "cloud", 0);
+  m_viewer->addCoordinateSystem (0.5, "cloud", 0);
   m_viewer->setBackgroundColor(1,1,1);
+  m_viewer->setCameraPosition(5.0,-5.0,5.0,0,0,0,0,0,1,0);
 }
 
 PCLViewer::~PCLViewer()
@@ -32,7 +33,7 @@ void PCLViewer::AddPointCloud(const WSPointCloudPtr cloud, int vp)
 {
   m_viewer->removeAllShapes();
   m_viewer->removeAllPointClouds();
-  std::string name("cloud");
+  std::string name("cloud_");
   name.append(std::to_string(vp));
   m_viewer->addPointCloud<WSPoint>(cloud,name,vp);
   m_viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,1,name,vp);
@@ -41,36 +42,31 @@ void PCLViewer::AddPointCloud(const WSPointCloudPtr cloud, int vp)
   Eigen::Vector4f centroid, min, max;
   pcl::compute3DCentroid(*cloud, centroid);
   pcl::getMinMax3D<WSPoint>(*cloud, min, max);
-  double dRadius = 0.5*std::sqrt((max[0]-min[0])*(max[0]-min[0])+(max[1]-min[1])*(max[1]-min[1])+(max[2]-min[2])*(max[2]-min[2]));
+  double dRadius = 1.0*std::sqrt((max[0]-min[0])*(max[0]-min[0])+(max[1]-min[1])*(max[1]-min[1])+(max[2]-min[2])*(max[2]-min[2]));
   m_viewer->setCameraPosition(dRadius,-dRadius,dRadius,centroid[0],centroid[1],centroid[2],0,0,1,vp);
 }
 
-void PCLViewer::AddNormals(const WSPointCloudPtr cloud, const WSPointCloudNormalPtr normal, int size, double arrow, int vp)
+void PCLViewer::AddCube(const WSPoint& point, double s, int id, double r,double g, double b, int vp)
 {
-  std::string name("normal");
-  name.append(std::to_string(vp));
-  m_viewer->addPointCloudNormals<WSPoint, WSNormal>(cloud,normal,size,arrow,name,vp);
+  std::string name("cube_");
+  name.append(std::to_string(id));
+  m_viewer->removeShape(name);
+  m_viewer->addCube(point.x-s,point.x+s,point.y-s,point.y+s,point.z-s,point.z+s,r,g,b,name,vp);
+  m_viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_REPRESENTATION, 1, name);
+  m_viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.2, name);
+  m_viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 1, name);
 }
 
-void PCLViewer::AddArrows(const WSPointCloudPtr cloud, const WSPointCloudNormalPtr normal, double length, int vp)
+void PCLViewer::AddArrow(const WSPoint& pt, const WSNormal& normal, double length, int id, double r,double g, double b, int vp)
 {
-  std::string name("arrow");
-  name.append(std::to_string(vp));
-  for (size_t i = 0; i < cloud->points.size(); ++i)
-  {
-    WSPoint pt = cloud->points[i];
-    WSNormal nm = normal->points[i];
-    Eigen::Vector3f vec(nm.normal_x,nm.normal_y,nm.normal_z);
-    Eigen::Vector3f pt1(pt.x,pt.y,pt.z);
-    Eigen::Vector3f nvc = vec.normalized();
-    Eigen::Vector3f pt2 = pt1 + length*nvc;
-    WSPoint pte;
-    pte.x = pt2[0];
-    pte.y = pt2[1];
-    pte.z = pt2[2];
-    name.append(std::to_string(i));
-    m_viewer->addArrow(pt,pte,0.0,1.0,0.0,false,name,vp);
-  }
+  std::string name("arrow_");
+  name.append(std::to_string(id));
+  m_viewer->removeShape(name);
+  WSPoint pte;
+  pte.x = pt.x + length*normal.normal_x;
+  pte.y = pt.y + length*normal.normal_y;
+  pte.z = pt.z + length*normal.normal_z;
+  m_viewer->addArrow(pt,pte,r,g,b,false,name,vp);
 }
 
 void PCLViewer::AddMesh(const pcl::PolygonMesh& mesh)
@@ -100,15 +96,6 @@ void PCLViewer::Spin() const
   m_viewer->spin();
 }
 
-
-void PCLViewer::AddCube(const WSPoint& point, double s, const std::string& cubeName, double r,double g, double b, int vp)
-{
-  m_viewer->addCube(point.x-s,point.x+s,point.y-s,point.y+s,point.z-s,point.z+s,r,g,b,cubeName,vp);
-  m_viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_REPRESENTATION, 1, cubeName);
-  m_viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.2, cubeName);
-  m_viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 3, cubeName);
-}
-
 void PCLViewer::AddText(const std::string& text, const std::string& id, int vp)
 {
     m_viewer->addText(text,50,50,30,0.0,0.0,0.0,id,vp);
@@ -128,4 +115,11 @@ void PCLViewer::AddPolygon(const WSPointCloudPtr& polygon, const std::string& id
   m_viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_REPRESENTATION, 1, id);
   m_viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.2, id);
   m_viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 2, id);
+}
+
+void PCLViewer::AddNormals(const WSPointCloudPtr cloud, const WSPointCloudNormalPtr normal, int size, double arrow, int vp)
+{
+  std::string name("normal_");
+  name.append(std::to_string(vp));
+  m_viewer->addPointCloudNormals<WSPoint, WSNormal>(cloud,normal,size,arrow,name,vp);
 }
