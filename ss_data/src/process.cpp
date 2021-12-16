@@ -47,10 +47,8 @@ bool PCLProcess::RegisterPointCloud(OctoMap* map)
 
   WSPointCloudPtr tCloud (new WSPointCloud);
   pcl::transformPointCloud (*cloud, *tCloud, trans);
-
   // filter pt in z in global frame
   tCloud = filter.FilterPassThrough(tCloud,"z",0.05,10);
-
   // add point cloud to map
   map->AddView(trans, tCloud);
 

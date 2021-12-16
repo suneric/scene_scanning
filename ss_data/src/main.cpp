@@ -7,7 +7,7 @@
 
 using namespace ssv3d;
 
-OctoMap map(0.5);
+OctoMap map(0.2);
 PCLProcess processor;
 PCLViewer viewer("3D Data Visualizer");
 
@@ -27,16 +27,28 @@ void DataCallback(const sensor_msgs::PointCloud2ConstPtr& msg)
   if (res)
   {
     // std::cout << "update point cloud..." << std::endl;
-    std::vector<Voxel3d> voxels;
-    map.OccupiedVoxels(voxels);
+    std::vector<Voxel3d> occupiedVoxels, freeVoxels, occludedVoxels;
+    map.OccludedVoxels(occludedVoxels);
+    map.OccupiedVoxels(occupiedVoxels);
+    map.FreeVoxels(freeVoxels);
     std::cout << "add point cloud to view..." << std::endl;
     viewer.AddPointCloud(map.PointCloud());
-    for (size_t i=0; i < voxels.size(); ++i)
+    for (size_t i=0; i < occupiedVoxels.size(); ++i)
     {
-      Voxel3d v = voxels[i];
+      Voxel3d v = occupiedVoxels[i];
       viewer.AddCube(v.Center(), v.Length(), v.Id(), 0,0,1);
-      viewer.AddArrow(v.Centroid(),v.Normal(),0.1,v.Id(),0.1,0,1,0);
+      // viewer.AddArrow(v.Centroid(),v.Normal(),0.1,v.Id(),0.1,0,1,0);
     }
+    // for (size_t i=0; i < freeVoxels.size(); ++i)
+    // {
+    //   Voxel3d v = freeVoxels[i];
+    //   viewer.AddCube(v.Center(), v.Length(), v.Id(), 0,1,0);
+    // }
+    // for (size_t i=0; i < occludedVoxels.size(); ++i)
+    // {
+    //   Voxel3d v = occludedVoxels[i];
+    //   viewer.AddCube(v.Center(), v.Length(), v.Id(), 1,0,0);
+    // }
   }
 }
 

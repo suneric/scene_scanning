@@ -51,7 +51,7 @@ void PCLViewer::AddCube(const WSPoint& point, double s, int id, double r,double 
   std::string name("cube_");
   name.append(std::to_string(id));
   m_viewer->removeShape(name);
-  m_viewer->addCube(point.x-s,point.x+s,point.y-s,point.y+s,point.z-s,point.z+s,r,g,b,name,vp);
+  m_viewer->addCube(point.x-0.5*s,point.x+0.5*s,point.y-0.5*s,point.y+0.5*s,point.z-0.5*s,point.z+0.5*s,r,g,b,name,vp);
   m_viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_REPRESENTATION, 1, name);
   m_viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.2, name);
   m_viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 1, name);
