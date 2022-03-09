@@ -7,7 +7,7 @@
 
 using namespace ssv3d;
 
-OctoMap map(0.2);
+OctoMap map(0.5);
 PCLProcess processor;
 PCLViewer viewer("3D Data Visualizer");
 
@@ -50,6 +50,7 @@ void DataCallback(const sensor_msgs::PointCloud2ConstPtr& msg)
     //   viewer.AddCube(v.Center(), v.Length(), v.Id(), 1,0,0);
     // }
   }
+  
 }
 
 void PoseCallback(const std_msgs::Float64MultiArray::ConstPtr& msg)
