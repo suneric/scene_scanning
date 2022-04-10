@@ -371,3 +371,9 @@ WSPointCloudPtr OctoMap::PointCloud() const
     cloud->push_back(m_points[i]);
   return cloud;
 }
+
+void OctoMap::VoxelStatus(std::vector<int>& map) const
+{
+  for (int i = 0; i < m_voxels.size(); ++i)
+    map.push_back(m_voxels[i].Status());
+}

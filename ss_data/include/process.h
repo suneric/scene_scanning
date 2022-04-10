@@ -2,7 +2,6 @@
 #define _SSDATA_PCL_PROCESS_H_
 
 #include "octomap.h"
-#include "std_msgs/Float64MultiArray.h"
 
 namespace ssv3d
 {

@@ -113,6 +113,8 @@ namespace ssv3d
 
     WSPointCloudPtr PointCloud() const;
 
+    void VoxelStatus(std::vector<int>& map) const;
+
   private:
     double m_resolution;
     std::vector<WSPoint> m_points;
