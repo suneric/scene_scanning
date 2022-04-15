@@ -1,9 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import rospy
 import numpy as np
 from math import *
 import pcl
-from camera import RealSenseD435
+from sensor.camera import RealSenseD435
 
 #######################
 class DataCapture:

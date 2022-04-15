@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import rospy
 import numpy as np
 from math import *
@@ -136,7 +136,7 @@ if __name__ == '__main__':
                 rospy.sleep(1)
                 auto.takeoff()
             else:
-                key_input = raw_input("press enter for start autonomous flying:\n")
+                key_input = input("press enter for start autonomous flying:\n")
                 if (key_input == 'l'):
                     if not auto.isLanding:
                         auto.landing()

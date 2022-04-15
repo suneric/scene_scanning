@@ -11,7 +11,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs)
 
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
-find_package(PCL 1.7.2 REQUIRED COMPONENTS common io kdtree filters features surface keypoints octree recognition sample_consensus search segmentation stereo tracking visualization pcl_conversions)
+find_package(PCL 1.9.1 REQUIRED COMPONENTS common io kdtree filters features surface keypoints octree recognition sample_consensus search segmentation stereo tracking visualization pcl_conversions)
 find_package(OpenCV REQUIRED COMPONENTS core imgproc highgui)
 
 ## Uncomment this if the package has a setup.py. This macro ensures

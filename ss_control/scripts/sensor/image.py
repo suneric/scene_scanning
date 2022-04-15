@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import numpy as np
 import cv2 as cv
 
@@ -24,7 +24,7 @@ class DepthImage:
         dist_list=[]
         for i in range(-size,size):
             for j in range(-size,size):
-                value = self.depth[v+j,u+i]
+                value = self.depth[int(v+j),int(u+i)]
                 if value > 0.0:
                     dist_list.append(value)
         if not dist_list:
@@ -72,8 +72,8 @@ class ColorImage:
         cv.waitKey(3) #& 0xFF
 
     def _draw_box(self,size,cx,cy,clr,lw,dist):
-        cv.rectangle(self.color, (cx-size, cy-size), (cx+size, cy+size), clr, lw)
+        cv.rectangle(self.color, (int(cx-size), int(cy-size)), (int(cx+size), int(cy+size)), clr, lw)
         if dist != None:
             strDist = "{:.6}".format(str(dist)) # cm
             font_scale = 0.3
-            cv.putText(self.color, strDist, (cx-size+4, cy), cv.FONT_HERSHEY_SIMPLEX, font_scale, clr, lw)
+            cv.putText(self.color, strDist, (int(cx-size+4), int(cy)), cv.FONT_HERSHEY_SIMPLEX, font_scale, clr, lw)

@@ -1,12 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import rospy
 import numpy as np
 import cv2 as cv
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2
 import sensor_msgs.point_cloud2 as pc2
-
-from image import DepthImage, ColorImage
+from sensor.image import DepthImage, ColorImage
 
 # realsense d435
 class RealSenseD435:
