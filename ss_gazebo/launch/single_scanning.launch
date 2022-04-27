@@ -1,5 +1,5 @@
 <launch>
-  <arg name="world" default="airplane_1"/>
+  <arg name="world" default="airplane_2"/>
   <include file="$(find ss_gazebo)/launch/scene.launch">
     <arg name="world" value="$(arg world)"/>
   </include>
@@ -9,8 +9,8 @@
       <arg name="robot_ns" value="/uav1"/>
       <arg name="name" value="uav1" />
       <arg name="tf_prefix" value="uav1" />
-      <arg name="x" value="3.0" />
-      <arg name="y" value="3.0" />
+      <arg name="x" value="10.0" />
+      <arg name="y" value="-20.0" />
     </include>
   </group>
 

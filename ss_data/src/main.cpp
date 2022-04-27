@@ -79,8 +79,8 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "data_process");
   ros::NodeHandle nh;
 
-  Eigen::Vector3f vMin(-6.0,-6.0,0.0);
-  Eigen::Vector3f vMax(3.0,6.0,5.0);
+  Eigen::Vector3f vMin(-30.0,-30.0,0.0);
+  Eigen::Vector3f vMax(30.0,30.0,10.0);
 
   std::cout << "initialize..." << std::endl;
   map.CreateMap(vMin, vMax);

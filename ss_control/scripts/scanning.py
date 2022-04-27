@@ -8,17 +8,40 @@ import std_msgs.msg
 from std_msgs.msg import Float64MultiArray, MultiArrayDimension
 import sensor_msgs.point_cloud2 as pc2
 import transform
-
+from transform import QuadrotorTransform
 from controller import UAVController
 from sensor.camera import RealSenseD435
 from sensor.image import DepthImage, ColorImage
+import os
+import sys
 
-
-def create_trajectoy():
-    trajectory = [(3.0,0,5.0,3.14,1.2),
-                  (2.0,0,5.0,3.14,1.3),
-                  (1.0,0,5.0,3.14,1.4),
-                  (0.0,0,5.0,3.14,1.5)]
+def load_trajectory(file):
+    print("load trajectory from", file)
+    transform_util = QuadrotorTransform()
+    trajectory = []
+    with open(file,'r') as reader:
+        for line in reader.read().splitlines():
+            data = line.split(" ")
+            idx = int(data[0])
+            px = float(data[1])
+            py = float(data[2])
+            pz = float(data[3])
+            ox = float(data[4])
+            oy = float(data[5])
+            oz = float(data[6])
+            ow = float(data[7])
+            pose = Pose();
+            pose.position.x = px
+            pose.position.y = py
+            pose.position.z = pz
+            pose.orientation.x = ox
+            pose.orientation.y = oy
+            pose.orientation.z = oz
+            pose.orientation.w = ow
+            quadrotor, camera = transform_util.camera2quadrotor(pose)
+            trajectory.append((quadrotor,camera))
+    reader.close()
+    print(trajectory)
     return trajectory
 
 
@@ -34,7 +57,8 @@ class AutoScanning:
         self.dataPub = self.create_data_pub(self.controller.robotName)
         self.posePub = self.create_pose_pub(self.controller.robotName)
 
-        self.trajectory = create_trajectoy()
+        self.trajectory = load_trajectory(os.path.join(sys.path[0],'../trajectory/aco.txt'))
+        self.viewpoint_count = len(self.trajectory)
 
     def create_data_pub(self, robotName):
         topic = robotName+'/pointcloud'
@@ -65,14 +89,16 @@ class AutoScanning:
             return
         if len(self.trajectory) == 0:
             self.status = 'compelete'
+            self.landing()
             return
+        print("{} th viewpoint".format(self.viewpoint_count-len(self.trajectory)+1))
         goal = self.trajectory.pop(0)
         self._fly_to(goal)
 
     def _fly_to(self, goalPose):
         print("flying")
         self.status = 'flying'
-        pose,angle = self.goal(goalPose)
+        pose,angle = goalPose[0],goalPose[1] #self.goal(goalPose)
         self.controller.set_camera_joint(angle)
         self.controller.fly_to(pose, self._fly_cb)
 
@@ -136,12 +162,9 @@ if __name__ == '__main__':
                 rospy.sleep(1)
                 auto.takeoff()
             else:
-                key_input = input("press enter for start autonomous flying:\n")
-                if (key_input == 'l'):
-                    if not auto.isLanding:
-                        auto.landing()
-                else:
+                if not auto.isLanding:
                     auto.fly_and_scan()
+
             rate.sleep()
     except rospy.ROSInterruptException:
         pass

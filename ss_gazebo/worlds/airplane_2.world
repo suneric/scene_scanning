@@ -11,11 +11,11 @@
       <link name='airplane'>
         <pose>0 0 0 0 0 0</pose>
         <visual name='visual'>
-          <pose>0 0 0 1.5707963 0 -1.5707963</pose>
+          <pose>0 0 0 1.5707963 0 3.1415926</pose>
           <geometry>
             <mesh>
               <uri>/home/yufeng/catkin_ws/src/scene_scanning/ss_gazebo/media/models/airplane_2/Boeing757.obj</uri>
-              <scale>1 1 1</scale>
+              <scale>0.5 0.5 0.5</scale>
             </mesh>
           </geometry>
           <material>
@@ -31,11 +31,11 @@
         <collision name='collision'>
           <laser_retro>0</laser_retro>
           <max_contacts>10</max_contacts>
-          <pose frame=''>0 0 0 1.5707963 0 -1.5707963</pose>
+          <pose frame=''>0 0 0 1.5707963 0 3.1415926</pose>
           <geometry>
             <mesh>
               <uri>/home/yufeng/catkin_ws/src/scene_scanning/ss_gazebo/media/models/airplane_2/Boeing757.obj</uri>
-              <scale>1 1 1</scale>
+              <scale>0.5 0.5 0.5</scale>
             </mesh>
           </geometry>
           <surface>
@@ -88,10 +88,10 @@
     </model>
     <gui fullscreen='0'>
       <camera name='user_camera'>
-       <pose frame=''>69.94 84.123 40.8814 0 0.283643 -2.24699</pose>
-       <view_controller>orbit</view_controller>
-       <projection_type>perspective</projection_type>
-     </camera>
+        <pose frame=''>60 -80 40 0 0.275643 2.21619</pose>
+        <view_controller>orbit</view_controller>
+        <projection_type>perspective</projection_type>
+      </camera>
    </gui>
    <physics type="ode">
      <max_step_size>0.001</max_step_size>

@@ -13,7 +13,7 @@ PCLViewer::PCLViewer(const std::string& title)
 {
   m_viewer = new pcl::visualization::PCLVisualizer(title);
   m_viewer->initCameraParameters();
-  m_viewer->setSize(600,480);
+  m_viewer->setSize(1080,720);
   m_viewer->addCoordinateSystem (0.5, "cloud", 0);
   m_viewer->setBackgroundColor(1,1,1);
   m_viewer->setCameraPosition(5.0,-5.0,5.0,0,0,0,0,0,1,0);
