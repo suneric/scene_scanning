@@ -35,8 +35,10 @@ class CPPEnv(object):
         self.vpsState = [0]*len(self.util.viewpoints)
         self.voxelState = [0]*len(self.util.voxels)
         self.occupiedCount = len(np.nonzero(self.voxelState)[0])
+        self.vpIdx = 0
 
     def reset(self,vpIdx=0):
+        self.vpIdx = vpIdx
         self.vpsState = [0]*len(self.util.viewpoints)
         self.voxelState = [0]*len(self.util.voxels)
         self.occupiedCount = len(np.nonzero(self.voxelState)[0])
@@ -50,20 +52,29 @@ class CPPEnv(object):
             self.voxelState[v] += 1
             vpCover[v] += 1
 
+        coverage = self.coverage()
+        nbvps = self.util.neighbors(vpIdx)
+
         obs = np.zeros((2,len(self.util.voxels)))
         obs[0,:]=self.voxelState
         obs[1,:]=vpCover
 
-        coverage = self.coverage()
-        nbvps = self.util.neighbors(vpIdx)
-
         return vp, nbvps, obs, coverage
 
     def step(self, vpIdx):
-        # move to new vp and update the status
         vp = self.util.viewpoints[vpIdx]
-        self.vpsState[vpIdx] += 1
 
+        # calculate traveling distance
+        dist = 0.0
+        if vpIdx == self.vpIdx:
+            dist = 100
+        else:
+            vp0 = self.util.viewpoints[self.vpIdx]
+            dist = vpDistance(vp0, vp)
+        self.vpIdx = vpIdx
+
+        # move to new vp and update the status
+        self.vpsState[vpIdx] += 1
         vpCover = [0]*len(self.util.voxels)
         for v in vp.voxels:
             self.voxelState[v] += 1
@@ -71,14 +82,19 @@ class CPPEnv(object):
 
         # calcuate reward
         occupiedCount_new = len(np.nonzero(self.voxelState)[0])
-        reward = 100.0*(occupiedCount_new - self.occupiedCount)/len(self.util.voxels) - 0.1 - 0.1*(self.vpsState[vpIdx]-1)
+        coverage_add = 100.0*(occupiedCount_new - self.occupiedCount)/len(self.util.voxels)
+        reward = coverage_add - 0.01*dist
         self.occupiedCount = occupiedCount_new
+
+        coverage = self.coverage()
+        if coverage == 1.0:
+            reward += 10.0
+
+        nbvps = self.util.neighbors(vpIdx)
 
         obs = np.zeros((2,len(self.util.voxels)))
         obs[0,:]=self.voxelState
         obs[1,:]=vpCover
-        coverage = self.coverage()
-        nbvps = self.util.neighbors(vpIdx)
 
         return vp,nbvps,reward,obs,coverage
 
@@ -290,6 +306,7 @@ def getParameters():
     parser.add_argument('--overlap', type=float, default=0.0) # control parameter for neighbors choice
     parser.add_argument('--max_ep', type=int, default=10000)
     parser.add_argument('--ep_step', type=int, default=50)
+    parser.add_argument('--ad', type=int, default=4)
 
     return parser.parse_args()
 
@@ -301,7 +318,7 @@ if __name__ == "__main__":
     vps = vpGenerator.load(os.path.join(args.load, args.vpsfile))
     print("load {} viewpoints from file".format(len(vps)))
     # build neighborhood map
-    util = ViewPointUtil2(vps=vps,overlap=args.overlap)
+    util = ViewPointUtil2(vps=vps,overlap=args.overlap,ad=args.ad)
     util.buildNeighborMap()
 
     model_dir = os.path.join(sys.path[0],'..','saved',datetime.now().strftime("%Y-%m-%d-%H-%M"))
@@ -313,7 +330,7 @@ if __name__ == "__main__":
     buffer_cap = 600
     train_freq = 500
     env = CPPEnv(util)
-    action_size = 4
+    action_size = args.ad
     state_dim = (2,len(util.voxels)) # x,y,z of the vp and its neighborhood vps
     agent = PPOAgent(state_dim=state_dim, action_size=action_size, clip_ratio=0.2, lr_a=1e-4, lr_c=3e-4, beta=1e-4)
     buffer = ReplayBuffer(input_shape=state_dim, action_size=action_size, size=buffer_cap)
@@ -345,7 +362,7 @@ if __name__ == "__main__":
             bestScore = epReturn
 
         tf.summary.scalar("episode total reward", epReturn, step=ep+1)
-        print("Episode:{},Return:{:.4f},Length:{},Coverage:{:.4f},Success:{}".format(ep+1, epReturn, epLength,coverage,success_counter))
+        print("Episode:{},Return:{:.4f},Length:{},Coverage:{:.4f},Best:{:.4f},Success:{}".format(ep+1, epReturn, epLength,coverage,bestScore,success_counter))
 
         buffer.ep_update(gamma=0.99, lamda=0.97)
         size = buffer.size()
@@ -354,4 +371,4 @@ if __name__ == "__main__":
             agent.train(data=buffer.get(), batch_size=size, iter_a=80, iter_c=80)
 
     print("Find best trajectory total reward {:.4f}".format(bestScore))
-    vpGenerator.save("ppo_best.txt",best)
+    vpGenerator.save("ppo_best.txt",alterTour(best))

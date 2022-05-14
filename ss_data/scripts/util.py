@@ -139,12 +139,13 @@ def mirrorTour(tour):
 
 
 class ViewPointUtil2(object):
-    def __init__(self, vps, overlap=0.1):
+    def __init__(self, vps, overlap=0.1, ad=4):
         self.voxels = set()
         self.viewpoints = []
         self.initialViewpoints(vps)
         self.nbMap = []
         self.overlap = overlap
+        self.nb_count = ad
 
     def initialViewpoints(self,vps):
         self.originalvps = vps
@@ -196,42 +197,50 @@ class ViewPointUtil2(object):
         mat = cartesian_to_matrix(vp.camera)
         refx = [mat[0][0],mat[1][0],mat[2][0]] # x-axis
 
-        right_vps,left_vps,up_vps,down_vps = [],[],[],[]
-        dists = []
+        nbdirs = []
+        for _ in range(self.nb_count):
+            nbdirs.append([])
+
+        sec = 360.0/self.nb_count
         for j in range(dim):
             vp1 = vps[j]
             # skip same vp
             if vp1.id == vp.id:
                 continue
+
             # check overlap ratio
             duplicate = float(vpOverlap(vp, vp1) / (len(vp.voxels)+len(vp1.voxels)))
             if duplicate < overlap:
                 continue
 
-            dir = vpDirection(vp,vp1)
-            a = angle(dir,refx)
-            if a > -45 and a <=45:
-                right_vps.append(j)
-            elif a > 45 and a <= 135:
-                up_vps.append(j)
-            elif a > -135 or a <= -45:
-                down_vps.append(j)
-            else:
-                left_vps.append(j)
+            # assign section based on its direction
+            secIdx = self.assignSection(sec,vp,vp1,refx)
+            nbdirs[secIdx].append(j)
 
-        right_vp = self.findFarestNeighbor(i,vps,right_vps)
-        up_vp = self.findFarestNeighbor(i,vps,up_vps)
-        left_vp = self.findFarestNeighbor(i,vps,left_vps)
-        down_vp = self.findFarestNeighbor(i,vps,down_vps)
-        nbvps = [right_vp,up_vp,left_vp,down_vp]
-        print("neighborhood vps",nbvps)
+        nbvps = []
+        for k in range(len(nbdirs)):
+            nbvps.append(self.findFarestNeighbor(i,vp,vps,nbdirs[k]))
+
+        print("neighborhood vps",i,nbvps)
         return nbvps
 
-    def findFarestNeighbor(self,i,vps,indices):
-        vpIdx = i
+    def assignSection(self,sec,vp,vp1,refx):
+        a = angle(vpDirection(vp,vp1),refx)
+        i = 0
+        limit_min = -180+0.5*sec
+        while limit_min + sec < 180:
+            if a > limit_min and a <= limit_min + sec:
+                break
+            else:
+                limit_min += sec
+                i += 1
+        return i
+
+    def findFarestNeighbor(self,c,vp,vps,indices):
+        vpIdx = c
         dist = 0.0
         for idx in indices:
-            vpDist = vpDistance(vps[i],vps[idx])
+            vpDist = vpDistance(vp,vps[idx])
             if vpDist > dist:
                 dist = vpDist
                 vpIdx = idx
