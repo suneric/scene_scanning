@@ -1,4 +1,5 @@
 <?xml version="1.0"?>
 <launch>
-  <node name="data_process_node" pkg="ss_data" type="ss_data_node" output="screen" />
+  <arg name="display"/>
+  <node name="data_process_node" pkg="ss_data" type="ss_data_node" output="screen" args="$(arg display)"/>
 </launch>

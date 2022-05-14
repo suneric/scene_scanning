@@ -128,6 +128,9 @@ set(TARGET_H
     include/filter.h
     include/viewer.h
     include/process.h
+    include/display.h
+    include/octree.h
+    include/viewpoint.h
     )
 
 set(TARGET_SRC
@@ -136,6 +139,9 @@ set(TARGET_SRC
     src/process.cpp
     src/filter.cpp
     src/octomap.cpp
+    src/display.cpp
+    src/octree.cpp
+    src/viewpoint.cpp
     )
 
 add_definitions(${PCL_DEFINITIONS})
