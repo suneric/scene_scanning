@@ -43,12 +43,13 @@ namespace ssv3d
     void GenerateCameraPositions(
       const PCLOctree& tree,
       double distance,
-      const Eigen::Vector3f& refNormal,
-      const std::vector<double>& bbox,
-      std::vector<Eigen::Affine3f>& cameras,
       double height_min,
-      double height_max
+      double height_max,
+      const Eigen::Vector3f& refViewpoint,
+      bool bSampling,
+      std::vector<Eigen::Affine3f>& cameras
     );
+
     WSPointCloudPtr CameraViewVoxels(
       const PCLOctree& tree,
       const Eigen::Affine3f& camera,
@@ -63,13 +64,13 @@ namespace ssv3d
       const std::string& input,
       std::vector<Eigen::Affine3f>& cameras
     );
+    bool FilterViewPoint(const PCLOctree& tree, const Eigen::Affine3f& camera);
 
   private:
     Eigen::Affine3f ViewPoint2CameraPose(const Cartesion& vp);
     Cartesion CameraPose2ViewPoint(const Eigen::Affine3f& camera);
     // convert traditional x right, y down and z forward matrix to xforward,y up, z right.
     Eigen::Matrix4f CameraPoseTransform(const Eigen::Matrix4f& mat);
-    bool FilterViewPoint(const PCLOctree& tree, const Eigen::Affine3f& camera);
     bool IsVisibleVoxel(const PCLOctree& tree, const Eigen::Vector3f& camera, const Eigen::Vector3f& centroid);
     Eigen::Affine3f CameraPosition(const Eigen::Vector3f& target, const Eigen::Vector3f& normal, double distance, double height_min, double height_max);
     Eigen::Affine3f CameraMatrix(const Eigen::Vector3f& center, const Eigen::Vector3f& normal);

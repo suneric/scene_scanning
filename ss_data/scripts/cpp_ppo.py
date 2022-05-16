@@ -30,12 +30,13 @@ np.random.seed(124)
 Environments
 """
 class CPPEnv(object):
-    def __init__(self,util):
+    def __init__(self,util,coverage):
         self.util = util
         self.vpsState = [0]*len(self.util.viewpoints)
         self.voxelState = [0]*len(self.util.voxels)
         self.occupiedCount = len(np.nonzero(self.voxelState)[0])
         self.vpIdx = 0
+        self.targetCoverage = coverage
 
     def reset(self,vpIdx=0):
         self.vpIdx = vpIdx
@@ -67,7 +68,7 @@ class CPPEnv(object):
         # calculate traveling distance
         dist = 0.0
         if vpIdx == self.vpIdx:
-            dist = 100
+            dist = 100 # give a large distance for the same viewpoint
         else:
             vp0 = self.util.viewpoints[self.vpIdx]
             dist = vpDistance(vp0, vp)
@@ -83,12 +84,14 @@ class CPPEnv(object):
         # calcuate reward
         occupiedCount_new = len(np.nonzero(self.voxelState)[0])
         coverage_add = 100.0*(occupiedCount_new - self.occupiedCount)/len(self.util.voxels)
-        reward = coverage_add - 0.01*dist
         self.occupiedCount = occupiedCount_new
+        dist_penaulty = -0.1*dist
+        vp_penaulty = -0.1*(self.vpsState[vpIdx]-1) # give penaulty for revisiting a viewpoint
+        reward = coverage_add + dist_penaulty + vp_penaulty
 
         coverage = self.coverage()
-        if coverage == 1.0:
-            reward += 10.0
+        if coverage > self.targetCoverage:
+            reward += 50.0
 
         nbvps = self.util.neighbors(vpIdx)
 
@@ -168,8 +171,8 @@ Agent NN
 """
 def mlp_net(inputs_dim, outputs_dim, outputs_activation='softmax'):
     inputs = keras.Input(shape=inputs_dim)
-    x = layers.Dense(256, activation = 'relu')(inputs)
-    x = layers.Dense(128, activation = 'relu')(x)
+    x = layers.Dense(int(inputs_dim[1]/3), activation = 'relu')(inputs)
+    x = layers.Dense(int(inputs_dim[1]/5), activation = 'relu')(x)
     x = layers.Flatten()(x)
     outputs = layers.Dense(outputs_dim, activation = outputs_activation)(x)
     return keras.Model(inputs=inputs, outputs=outputs)
@@ -304,8 +307,9 @@ def getParameters():
     parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--vpsfile', type=str, default=None)
     parser.add_argument('--overlap', type=float, default=0.0) # control parameter for neighbors choice
-    parser.add_argument('--max_ep', type=int, default=10000)
+    parser.add_argument('--max_ep', type=int, default=1000)
     parser.add_argument('--ep_step', type=int, default=50)
+    parser.add_argument('--coverage', type=float, default=0.9)
     parser.add_argument('--ad', type=int, default=4)
 
     return parser.parse_args()
@@ -329,17 +333,18 @@ if __name__ == "__main__":
     # create a environment
     buffer_cap = 600
     train_freq = 500
-    env = CPPEnv(util)
+    env = CPPEnv(util, args.coverage)
     action_size = args.ad
     state_dim = (2,len(util.voxels)) # x,y,z of the vp and its neighborhood vps
-    agent = PPOAgent(state_dim=state_dim, action_size=action_size, clip_ratio=0.2, lr_a=1e-4, lr_c=3e-4, beta=1e-4)
+    agent = PPOAgent(state_dim=state_dim, action_size=action_size, clip_ratio=0.2, lr_a=1e-4, lr_c=3e-4, beta=5e-3)
     buffer = ReplayBuffer(input_shape=state_dim, action_size=action_size, size=buffer_cap)
 
-    best = []
+    bestvps = []
     bestScore = 0.0
+    bestCoverage = 0.0
     success_counter = 0
     for ep in range(args.max_ep):
-        vpIdx = 0
+        vpIdx = 0 #np.random.randint(len(vps))
         vp,nbvps,obs,coverage = env.reset(vpIdx)
         traj = [vp]
         epReturn, epLength = 0, 0
@@ -353,16 +358,17 @@ if __name__ == "__main__":
             obs = n_obs
             epReturn += r
             epLength += 1
-            if coverage == 1.0:
+            if coverage > args.coverage:
                 success_counter += 1
                 break;
 
         if epReturn > bestScore:
-            best = traj
+            bestvps = traj
             bestScore = epReturn
+            bestCoverage = coverage
 
         tf.summary.scalar("episode total reward", epReturn, step=ep+1)
-        print("Episode:{},Return:{:.4f},Length:{},Coverage:{:.4f},Best:{:.4f},Success:{}".format(ep+1, epReturn, epLength,coverage,bestScore,success_counter))
+        print("Episode:{},Return:{:.4f},Length:{},Coverage:{:.4f},Best:{:.4f},Success:{}".format(ep+1, epReturn, epLength,coverage*100,bestCoverage*100,success_counter))
 
         buffer.ep_update(gamma=0.99, lamda=0.97)
         size = buffer.size()
@@ -370,5 +376,6 @@ if __name__ == "__main__":
             print("ppo training with ",size," experiences...")
             agent.train(data=buffer.get(), batch_size=size, iter_a=80, iter_c=80)
 
-    print("Find best trajectory total reward {:.4f}".format(bestScore))
-    vpGenerator.save("ppo_best.txt",alterTour(best))
+    print("PPO find {} viewpoints for {:.2f}% coverage.".format(len(bestvps), bestCoverage*100))
+    traj_file = os.path.join(sys.path[0],'..','trajectory/ppo_best.txt')
+    vpGenerator.save(traj_file,alterTour(bestvps))

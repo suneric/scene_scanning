@@ -12,21 +12,25 @@ using namespace ssv3d;
 void PCLViewPoint::GenerateCameraPositions(
   const PCLOctree& tree,
   double distance,
-  const Eigen::Vector3f& refNormal,
-  const std::vector<double>& bbox,
-  std::vector<Eigen::Affine3f>& cameras,
   double height_min,
-  double height_max)
+  double height_max,
+  const Eigen::Vector3f& refViewpoint,
+  bool bSampling,
+  std::vector<Eigen::Affine3f>& cameras)
 {
   WSPointCloudPtr vCloud;
-  WSPointCloudNormalPtr vNormal = tree.VoxelAverageNormals(refNormal,bbox,vCloud);
+  WSPointCloudNormalPtr vNormal;
+  if (bSampling)
+    vNormal = tree.VoxelAverageNormals_Sampling(refViewpoint,vCloud);
+  else
+    vNormal = tree.VoxelAverageNormals_All(refViewpoint,vCloud);
+
   for (size_t i = 0; i < vCloud->points.size(); ++i)
   {
     Eigen::Vector3f point(vCloud->points[i].x, vCloud->points[i].y, vCloud->points[i].z);
     Eigen::Vector3f nm(vNormal->points[i].normal_x, vNormal->points[i].normal_y, vNormal->points[i].normal_z);
     Eigen::Affine3f camera = CameraPosition(point,nm,distance,height_min,height_max);
-    if (!FilterViewPoint(tree,camera))
-      cameras.push_back(camera);
+    cameras.push_back(camera);
   }
 }
 
@@ -77,10 +81,19 @@ Eigen::Affine3f PCLViewPoint::CameraMatrix(const Eigen::Vector3f& center, const 
 
 bool PCLViewPoint::FilterViewPoint(const PCLOctree& tree, const Eigen::Affine3f& camera)
 {
-  // no point in view frustum
+  // covered voxel count < 5
   std::vector<int> voxelIndices;
   CameraViewVoxels(tree,camera,voxelIndices);
-  if (voxelIndices.empty())
+  int visibleVoxelCount = voxelIndices.size();
+  if (visibleVoxelCount < 6)
+    return true;
+
+  // check conflict bounding box
+  Eigen::Matrix4f mat = camera.matrix();
+  float x = mat(0,3),y = mat(1,3), z = mat(2,3);
+  Eigen::Vector3f minPt(x-0.05,y-0.05,z-0.3), maxPt(x+0.05,y+0.05,z);
+  std::vector<int> indices;
+  if (tree.BoxSearch(minPt, maxPt, indices) > 0)
     return true;
 
   return false;
@@ -140,8 +153,7 @@ bool PCLViewPoint::IsVisibleVoxel(const PCLOctree& tree, const Eigen::Vector3f& 
   checkPoints.push_back(Eigen::Vector3f(c.x(),c.y(),c.z()+halfVLen));
   for (int i = 0; i < checkPoints.size(); ++i)
   {
-    std::vector<WSPoint> intesects;
-    int nRes = tree.IntersectedOccupiedVoxels(camera, c);
+    int nRes = tree.IntersectedOccupiedVoxels(camera, checkPoints[i]);
     //std::cout << "intersects " << nRes << std::endl;
     if (nRes <= 1) // consider the two voxel share the same edge
       visibleSide++;
@@ -208,10 +220,6 @@ void PCLViewPoint::SaveToFile(const std::string& output,
   int vpIndex = 0;
   for (size_t i = 0; i < cameras.size(); ++i)
   {
-    if (voxelMap[i].size() == 0){
-      continue;
-    }
-
     Cartesion vp = CameraPose2ViewPoint(cameras[i]);
     // each line: viewpoint_idx px py pz ox oy oz ow voxel_indices ... \n
     tFile << vpIndex << " " << vp.pos_x << " "

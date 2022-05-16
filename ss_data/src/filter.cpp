@@ -20,8 +20,8 @@ WSPointCloudPtr PCLFilter::FilterPCLPointInBBox(const WSPointCloudPtr cloud, con
     return nullptr;
 
   pcl::CropBox<WSPoint> boxFilter(true);
-  boxFilter.setMin(Eigen::Vector4f(bbox[0], bbox[1], bbox[2], 1.0));
-  boxFilter.setMax(Eigen::Vector4f(bbox[3], bbox[4], bbox[5], 1.0));
+  boxFilter.setMin(Eigen::Vector4f(bbox[0], bbox[2], bbox[4], 1.0));
+  boxFilter.setMax(Eigen::Vector4f(bbox[1], bbox[3], bbox[5], 1.0));
   boxFilter.setInputCloud(cloud);
   boxFilter.setNegative(bFilter);
   std::vector<int> indices;
@@ -77,7 +77,7 @@ WSPointCloudPtr PCLFilter::SamplingSurfaceNormal(const WSPointCloudPtr cloud, un
   if (cloud == nullptr)
     return nullptr;
 
-  std::cout << "input cloud: " << std::to_string(cloud->points.size())<< std::endl;
+  // std::cout << "input cloud: " << std::to_string(cloud->points.size())<< std::endl;
 
   WSNormalPointCloudPtr normalCloud(new WSNormalPointCloud);
   normalCloud->points.resize(cloud->points.size());
@@ -95,13 +95,15 @@ WSPointCloudPtr PCLFilter::SamplingSurfaceNormal(const WSPointCloudPtr cloud, un
   pcl::SamplingSurfaceNormal<WSNormalPoint> ssn;
   ssn.setInputCloud(normalCloud);
   ssn.setSample(sample);
+  ssn.setSeed(123);
   ssn.setRatio(ratio);
   ssn.filter(*ssnCloud);
-  std::cout << "sampling surface normal: " << std::to_string(ssnCloud->points.size())<< std::endl;
+  // std::cout << "sampling surface normal: " << std::to_string(ssnCloud->points.size())<< std::endl;
 
   WSPointCloudPtr resCloud(new WSPointCloud);
+  WSPointCloudNormalPtr resNormal(new WSPointCloudNormal);
   resCloud->points.resize(ssnCloud->points.size());
-  normals->points.resize(ssnCloud->points.size());
+  resNormal->points.resize(ssnCloud->points.size());
   for (size_t i = 0; i < ssnCloud->points.size(); ++i)
   {
     resCloud->points[i].x = ssnCloud->points[i].x;
@@ -110,11 +112,13 @@ WSPointCloudPtr PCLFilter::SamplingSurfaceNormal(const WSPointCloudPtr cloud, un
     resCloud->points[i].r = ssnCloud->points[i].r;
     resCloud->points[i].g = ssnCloud->points[i].g;
     resCloud->points[i].b = ssnCloud->points[i].b;
-    normals->points[i].curvature = ssnCloud->points[i].curvature;
-    normals->points[i].normal_x = ssnCloud->points[i].normal_x;
-    normals->points[i].normal_y = ssnCloud->points[i].normal_y;
-    normals->points[i].normal_z = ssnCloud->points[i].normal_z;
+    resNormal->points[i].curvature = ssnCloud->points[i].curvature;
+    resNormal->points[i].normal_x = ssnCloud->points[i].normal_x;
+    resNormal->points[i].normal_y = ssnCloud->points[i].normal_y;
+    resNormal->points[i].normal_z = ssnCloud->points[i].normal_z;
   }
+
+  normals = resNormal;
 
   return resCloud;
 }

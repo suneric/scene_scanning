@@ -2,6 +2,7 @@
 #include "display.h"
 #include "octree.h"
 #include "viewpoint.h"
+#include "filter.h"
 #include "std_msgs/Float64MultiArray.h"
 #include "std_msgs/Int64MultiArray.h"
 #include "std_msgs/MultiArrayLayout.h"
@@ -77,6 +78,11 @@ void PoseCallback(const std_msgs::Float64MultiArray::ConstPtr& msg)
   processor.AddViewPoint(msg->data);
 }
 
+double Distance(const WSPoint& pt1, const WSPoint& pt2)
+{
+  return sqrt((pt1.x-pt2.x)*(pt1.x-pt2.x)+(pt1.y-pt2.y)*(pt1.y-pt2.y)+(pt1.z-pt2.z)*(pt1.z-pt2.z));
+}
+
 int main(int argc, char **argv)
 {
   int display = 0;
@@ -87,6 +93,12 @@ int main(int argc, char **argv)
 
   ros::init(argc, argv, "data_process");
   ros::NodeHandle nh;
+  std::string mapTopic("voxel_map");
+  map_pub = nh.advertise<std_msgs::Int64MultiArray>(mapTopic,100);
+  std::string vpTopic("/uav1/viewpoint");
+  ros::Subscriber vpSub = nh.subscribe<std_msgs::Float64MultiArray>(vpTopic,1,PoseCallback);
+  std::string ptTopic("/uav1/pointcloud");
+  ros::Subscriber dataSub = nh.subscribe<sensor_msgs::PointCloud2>(ptTopic,1,DataCallback);
 
   if (display == 0)
   {
@@ -97,14 +109,6 @@ int main(int argc, char **argv)
 
     std::cout << "initialize..." << std::endl;
     map.CreateMap(vMin, vMax);
-
-    std::string mapTopic("voxel_map");
-    map_pub = nh.advertise<std_msgs::Int64MultiArray>(mapTopic,100);
-
-    std::string vpTopic("/uav1/viewpoint");
-    ros::Subscriber vpSub = nh.subscribe<std_msgs::Float64MultiArray>(vpTopic,1,PoseCallback);
-    std::string ptTopic("/uav1/pointcloud");
-    ros::Subscriber dataSub = nh.subscribe<sensor_msgs::PointCloud2>(ptTopic,1,DataCallback);
   }
   else if (display == 1)
   {
@@ -116,12 +120,20 @@ int main(int argc, char **argv)
     viewer.AddPointCloud(cloud);
 
     std::vector<Eigen::Affine3f> cameras;
-    std::string vp_file = "/home/yufeng/catkin_ws/src/scene_scanning/ss_data/data/ppo_best.txt";
+    std::string vp_file = "/home/yufeng/catkin_ws/src/scene_scanning/ss_data/data/best.txt";
     visualtool.LoadViewpoints(vp_file,cameras);
 
+    double resolution = 0.5;
+    PCLOctree octree(cloud,resolution,10);
+    double voxelLen = octree.VoxelSideLength();
+    PCLViewPoint viewCreator;
+
+    double distance = 0.0;
     WSPoint startPt, endPt;
+    std::vector<int> coveredVoxels;
     for (int i = 0; i < cameras.size(); ++i)
     {
+      // display trajectory
       Eigen::Affine3f camera = cameras[i];
       if (i == 0) {
         endPt.x = camera.matrix()(0,3);
@@ -136,8 +148,34 @@ int main(int argc, char **argv)
         endPt.z = camera.matrix()(2,3);
         viewer.AddCoordinateSystem(camera,i,1.0,0,true);
       }
+
       viewer.AddLine(startPt,endPt,i,0.0,0.0,0.0);
+
+      distance += Distance(startPt,endPt);
+
+      // display covered voxels
+      std::vector<int> indices;
+      WSPointCloudPtr voxelCloud = viewCreator.CameraViewVoxels(octree, camera, indices);
+      std::vector<WSPoint> vCenters;
+      for (size_t j = 0; j < voxelCloud->points.size(); ++j)
+      {
+        WSPoint vCenter = voxelCloud->points[j];
+        int idx = octree.VoxelIndex(vCenter);
+        if (std::find(coveredVoxels.begin(), coveredVoxels.end(), idx) == coveredVoxels.end())
+        {
+          coveredVoxels.push_back(idx);
+          vCenters.push_back(vCenter);
+        }
+      }
+
+      for (size_t k = 0; k < vCenters.size(); ++k)
+      {
+        WSPoint c = vCenters[k];
+        viewer.AddCube(c,voxelLen,i*100+k,0,0,1);
+      }
     }
+
+    std::cout << cameras.size() << " viewpoints with trajectory length of " << distance << " meters." << std::endl;
   }
   else if (display == 2)
   {
@@ -166,8 +204,8 @@ int main(int argc, char **argv)
     {
       std::cout << line << std::endl;
       std::stringstream linestream(line);
-      std::string nx,ny,nz,xmin,xmax,ymin,ymax,zmin,zmax;
-      linestream >> nx >> ny >> nz >> xmin >> xmax >> ymin >> ymax >> zmin >> zmax >> height_min >> height_max;
+      std::string vpx,vpy,vpz,xmin,xmax,ymin,ymax,zmin,zmax;
+      linestream >> vpx >> vpy >> vpz >> xmin >> xmax >> ymin >> ymax >> zmin >> zmax >> height_min >> height_max;
       BBox box;
       box.push_back(std::stod(xmin));
       box.push_back(std::stod(xmax));
@@ -175,8 +213,8 @@ int main(int argc, char **argv)
       box.push_back(std::stod(ymax));
       box.push_back(std::stod(zmin));
       box.push_back(std::stod(zmax));
-      Eigen::Vector3f refNormal(std::stod(nx),std::stod(ny),std::stod(nz));
-      segments.push_back(std::make_pair(refNormal,box));
+      Eigen::Vector3f refVP(std::stod(vpx),std::stod(vpy),std::stod(vpz));
+      segments.push_back(std::make_pair(refVP,box));
     }
     config.close();
 
@@ -186,65 +224,45 @@ int main(int argc, char **argv)
     WSPointCloudPtr srcCloud = visualtool.LoadPointCloud(pt_file);
     viewer.AddPointCloud(srcCloud);
 
-    // create viewpoints
-    std::vector<Eigen::Affine3f> cameras;
-    PCLOctree octree(srcCloud,resolution,5);
+    PCLFilter filter;
     PCLViewPoint viewCreator;
+    PCLOctree octree(srcCloud,resolution,10);
+
+    // generate a sub cloud for the bounding box and evaluate surface normals and cameras
+    std::vector<Eigen::Affine3f> cameras;
     for (int i = 0; i < segments.size(); ++i)
     {
-      Eigen::Vector3f refNormal = segments[i].first;
-      BBox bbox = segments[i].second;
-      viewCreator.GenerateCameraPositions(octree,distance,refNormal,bbox,cameras,height_min,height_max);
+      Eigen::Vector3f refViewpoint = segments[i].first;
+      BBox sbox = segments[i].second;
+      WSPointCloudPtr segCloud = filter.FilterPCLPointInBBox(srcCloud,sbox,false);
+      PCLOctree segOctree(segCloud,resolution,10);
+      bool bSampling = false;
+      viewCreator.GenerateCameraPositions(segOctree,distance,height_min,height_max,refViewpoint,bSampling,cameras);
     }
-    std::cout << cameras.size() << " camere positions generated." << std::endl;
 
-    //////////////////////////////////////////////////////////////////////////
-    // voxel in view frustum culling
-    // use a higher resolution to calculate voxel coverage
-    // PCLOctree octree2(srcCloud,0.5*resolution,5);
-    std::vector<int> voxelCoveredVec;
-    std::map<int, std::vector<int> > viewVoxelMap;
+    // filter camera views
+    std::vector<Eigen::Affine3f> cameras_valid;
     for (size_t i = 0; i < cameras.size(); ++i)
+    {
+      Eigen::Affine3f camera = cameras[i];
+      if (!viewCreator.FilterViewPoint(octree, camera))
+        cameras_valid.push_back(camera);
+    }
+
+    // evaluate visible voxels
+    std::map<int, std::vector<int> > viewVoxelMap;
+    for (size_t i = 0; i < cameras_valid.size(); ++i)
     {
       std::vector<int> visibleVoxels;
-      WSPointCloudPtr viewCloud = viewCreator.CameraViewVoxels(octree, cameras[i],visibleVoxels);
+      WSPointCloudPtr viewCloud = viewCreator.CameraViewVoxels(octree, cameras_valid[i],visibleVoxels);
       viewVoxelMap.insert(std::make_pair(static_cast<int>(i), visibleVoxels));
-      for (size_t j = 0; j < visibleVoxels.size(); ++j)
-      { // calculate covered voxels
-        int vIndex = visibleVoxels[j];
-        if (std::find(voxelCoveredVec.begin(),voxelCoveredVec.end(),vIndex) == voxelCoveredVec.end())
-          voxelCoveredVec.push_back(vIndex);
-      }
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-    // voxel coverage
-    std::vector<int> voxelUncoveredVec;
-    std::vector<int> allVoxelVec;
-    int total = octree.VoxelIndices(allVoxelVec);
-    for (size_t i = 0; i < total; i++)
-    {
-      if (std::find(voxelCoveredVec.begin(), voxelCoveredVec.end(), allVoxelVec[i]) == voxelCoveredVec.end())
-        voxelUncoveredVec.push_back(allVoxelVec[i]);
-    }
-    double coverage = 100.0*(double(voxelCoveredVec.size())/double(total));
-    std::cout << "total voxel: " << total << " voxel covered/uncovered " << voxelCoveredVec.size()
-            << "/" << voxelUncoveredVec.size() << " coverage: " << coverage << " %" << std::endl;
+    // display view points
+    std::cout << "generate " << cameras_valid.size() << " valid viewpoints" << std::endl;
+    for (size_t i = 0; i < cameras_valid.size(); ++i)
+      viewer.AddCoordinateSystem(cameras_valid[i], i);
 
-    ////////////////////////////////////////////////////////////////////////////
-    // display
-    for (size_t i = 0; i < cameras.size(); ++i)
-      viewer.AddCoordinateSystem(cameras[i],i);
-
-    WSPointCloudPtr vCloud = octree.VoxelCentroidCloud();
-    double voxelLen = octree.VoxelSideLength();
-    for (size_t i = 0; i < vCloud->points.size(); ++i)
-    {
-      WSPoint c = vCloud->points[i];
-      viewer.AddCube(c,voxelLen,i,0,0,1);
-    }
-
-    /////////////////////////////////////////////////////////////////////////////
     // save viewpoints
     std::ostringstream oss1;
     oss1 << std::setprecision(2) << distance;

@@ -15,6 +15,8 @@
   </group>
 
   <include file="$(find ss_control)/launch/auto_scanning.launch"/>
-  <include file="$(find ss_data)/launch/data_process.launch"/>
+  <include file="$(find ss_data)/launch/data_process.launch">
+    <arg name="display" value="0"/>
+  </include>
   <!-- <include file="$(find ss_control)/launch/octomap_mapping.launch"/> -->
 </launch>

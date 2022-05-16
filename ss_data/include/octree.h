@@ -147,9 +147,14 @@ namespace ssv3d {
     double Resolution() const {return m_os->getResolution();}
 
     WSPointCloudPtr VoxelCentroidCloud() const;
-    WSPointCloudNormalPtr VoxelAverageNormals(
-      const Eigen::Vector3f& refNormal,
-      const std::vector<double>& bbox,
+
+    WSPointCloudNormalPtr VoxelAverageNormals_Sampling(
+      const Eigen::Vector3f& refViewpoint,
+      WSPointCloudPtr& voxelCentroid
+    ) const;
+
+    WSPointCloudNormalPtr VoxelAverageNormals_All(
+      const Eigen::Vector3f& refViewpoint,
       WSPointCloudPtr& voxelCentroid
     ) const;
 
@@ -166,10 +171,9 @@ namespace ssv3d {
     int IntersectedOccupiedVoxels(const Eigen::Vector3f& origin, const Eigen::Vector3f& end) const;
     int BoxSearch(const Eigen::Vector3f& minPt,
                   const Eigen::Vector3f& maxPt,
-                  std::vector<int> indices) const;
+                  std::vector<int>& indices) const;
   private:
     bool IsOutsideVoxel(const WSPoint& point, const Eigen::Vector3f& refNormal);
-    bool EvaluateVoxelNormal(const WSPointCloudPtr cloud, const WSPoint& point, WSNormal& normal, const Eigen::Vector3f& refNormal) const;
 
 
   private:

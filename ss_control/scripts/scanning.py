@@ -41,7 +41,7 @@ def load_trajectory(file):
             quadrotor, camera = transform_util.camera2quadrotor(pose)
             trajectory.append((quadrotor,camera))
     reader.close()
-    print(trajectory)
+    # print(trajectory)
     return trajectory
 
 

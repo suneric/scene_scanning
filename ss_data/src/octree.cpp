@@ -107,87 +107,151 @@ namespace{
   }
 }
 
-WSPointCloudNormalPtr PCLOctree::VoxelAverageNormals(
-  const Eigen::Vector3f& refNormal,
-  const std::vector<double>& bbox,
+WSPointCloudNormalPtr PCLOctree::VoxelAverageNormals_Sampling(
+  const Eigen::Vector3f& refViewpoint,
   WSPointCloudPtr& voxelCentroid) const
 {
   if (nullptr == m_centroidCloud)
     return nullptr;
 
-  std::vector<int> voxelIndices;
-  int nVoxel = m_voxelMap.VoxelIndices(voxelIndices);
-  std::vector<WSPoint> subsetCentroids;
-  for (int i = 0; i < nVoxel; ++i)
+  std::cout << "evaluate surface normal with sampled points in the voxel \n";
+
+  std::vector<Eigen::Vector3f> centroidVec;
+  std::vector<Eigen::Vector3f> normalVec;
+
+  // get all voxel cloud and evaluate normals
+  PCLFilter filter;
+  for (int i = 0; i < VoxelCount(); ++i)
   {
-    WSPoint point = m_voxelMap.GetVoxelCentroid(i);
-    if (InBoundingBox(point,bbox))
-      subsetCentroids.push_back(point);
+    WSPoint point = VoxelCentroid(i);
+    std::vector<int> voxelIndices;
+    if (!m_os->voxelSearch(point,voxelIndices) || voxelIndices.size() < 15)
+      continue;
+
+    // evaluate average normal of the voxel
+    WSPointCloudPtr vCloud = filter.ExtractPoints(m_cloud, voxelIndices);
+    WSPointCloudNormalPtr vNormal;
+    vCloud = filter.SamplingSurfaceNormal(vCloud,15,0.1,vNormal);
+
+    Eigen::Vector3f vec(0,0,0);
+    int numCount = vNormal->points.size();
+    for (size_t j = 0; j < numCount; ++j)
+    {
+      WSPoint point = vCloud->points[j];
+      WSNormal normal = vNormal->points[j];
+      Eigen::Vector3f nmVec = Eigen::Vector3f(normal.normal_x, normal.normal_y, normal.normal_z);
+      Eigen::Vector3f refVec = Eigen::Vector3f(refViewpoint.x()-point.x,refViewpoint.y()-point.y,refViewpoint.z()-point.z);
+      if (nmVec.dot(refVec) < 0.0) // normal angle > M_PI/2
+        nmVec = -nmVec;
+
+      vec += Eigen::Vector3f(nmVec.x(), nmVec.y(), nmVec.z());
+    }
+    Eigen::Vector3f nm = (vec/numCount).normalized();
+
+    // check visibility
+    Eigen::Vector3f centerPt = Eigen::Vector3f(point.x, point.y,point.z);
+    Eigen::Vector3f refPt = centerPt + 3.0*nm;
+    int nRes = IntersectedOccupiedVoxels(refPt, centerPt);
+    if (nRes > 1)
+      continue;
+
+    centroidVec.push_back(centerPt);
+    normalVec.push_back(nm);
   }
 
-  int nSubset = subsetCentroids.size();
+  int vCount = centroidVec.size();
   WSPointCloudPtr centroids(new WSPointCloud);
-  centroids->points.resize(nSubset);
+  centroids->points.resize(vCount);
   WSPointCloudNormalPtr normals(new WSPointCloudNormal);
-  normals->points.resize(nSubset);
-  for (int i = 0; i < nSubset; ++i)
+  normals->points.resize(vCount);
+  for (size_t i = 0; i < vCount; ++i)
   {
-    WSPoint point = subsetCentroids[i];
-    centroids->points[i] = point;
-    WSNormal normal;
-    EvaluateVoxelNormal(m_cloud, point, normal, refNormal);
-    normals->points[i].normal_x = normal.normal_x;
-    normals->points[i].normal_y = normal.normal_y;
-    normals->points[i].normal_z = normal.normal_z;
+    Eigen::Vector3f pt = centroidVec[i];
+    centroids->points[i].x = pt.x();
+    centroids->points[i].y = pt.y();
+    centroids->points[i].z = pt.z();
+    Eigen::Vector3f nm = normalVec[i];
+    normals->points[i].normal_x = nm.x();
+    normals->points[i].normal_y = nm.y();
+    normals->points[i].normal_z = nm.z();
   }
   voxelCentroid = centroids;
   return normals;
 }
 
-// evaluete average voxel normal, return if fliped
-bool PCLOctree::EvaluateVoxelNormal(const WSPointCloudPtr cloud, const WSPoint& point, WSNormal& normal, const Eigen::Vector3f& refNormal) const
+WSPointCloudNormalPtr PCLOctree::VoxelAverageNormals_All(
+  const Eigen::Vector3f& refViewpoint,
+  WSPointCloudPtr& voxelCentroid) const
 {
-  bool bFlip = false;
-  std::vector<int> voxelIndices;
-  if (m_os->voxelSearch(point,voxelIndices))
-  {
-    // find a all point grouped in the voxel and evaluate point normals
-    WSPointCloudNormalPtr normals(new WSPointCloudNormal);
+  if (nullptr == m_centroidCloud)
+    return nullptr;
 
-    PCLFilter filter;
-    WSPointCloudPtr groupPt = filter.ExtractPoints(cloud,voxelIndices);
+  std::cout << "evaluate surface normal with all points in the voxel \n";
+
+  std::vector<Eigen::Vector3f> centroidVec;
+  std::vector<Eigen::Vector3f> normalVec;
+
+  PCLFilter filter;
+  for (int i = 0; i < VoxelCount(); ++i)
+  {
+    WSPoint point = VoxelCentroid(i);
+    std::vector<int> voxelIndices;
+    if (!m_os->voxelSearch(point,voxelIndices))
+      continue;
+
+    // evaluate average normal of the voxel
+    WSPointCloudPtr vCloud = filter.ExtractPoints(m_cloud, voxelIndices);
+    WSPointCloudNormalPtr vNormal(new WSPointCloudNormal);
     pcl::NormalEstimation<WSPoint, WSNormal> ne;
     pcl::search::KdTree<WSPoint>::Ptr tree(new pcl::search::KdTree<WSPoint>());
     ne.setSearchMethod(tree);
-    ne.setInputCloud(groupPt);
+    ne.setInputCloud(vCloud);
+    ne.setViewPoint(refViewpoint.x(),refViewpoint.y(),refViewpoint.z());
     //ne.setKSearch(10);
-    ne.setRadiusSearch(0.1); // use all neighbors in 10 cm
-    ne.compute(*normals);
+    double rad = VoxelSideLength();
+    ne.setRadiusSearch(rad);
+    ne.compute(*vNormal);
 
     // find average normal for the voxel
     Eigen::Vector3f vec(0,0,0);
-    size_t num = normals->points.size();
-    for (size_t i = 0; i < num; ++i)
+    int numCount = vNormal->points.size();
+    for (size_t j = 0; j < numCount; ++j)
     {
-      WSNormal normal = normals->points[i];
+      WSNormal normal = vNormal->points[j];
       vec += Eigen::Vector3f(normal.normal_x, normal.normal_y, normal.normal_z);
     }
-    //std::cout << "normal vector " << num << " " << vec.x() << " " << vec.y() << " " << vec.z() << std::endl;
-    Eigen::Vector3f nm = (vec/num).normalized();
-    if (nm.dot(refNormal) < 0.0) // normal angle > M_PI/2
-    {
-      nm = -nm;
-      bFlip = true;
-    }
-    normal.normal_x = nm.x();
-    normal.normal_y = nm.y();
-    normal.normal_z = nm.z();
+    Eigen::Vector3f nm = (vec/numCount).normalized();
+
+    // check visibility
+    Eigen::Vector3f centerPt = Eigen::Vector3f(point.x, point.y,point.z);
+    Eigen::Vector3f refPt = centerPt + 3.0*nm;
+    int nRes = IntersectedOccupiedVoxels(refPt, centerPt);
+    if (nRes > 1)
+      continue;
+
+    centroidVec.push_back(centerPt);
+    normalVec.push_back(nm);
   }
-  else
+
+  int vCount = centroidVec.size();
+  WSPointCloudPtr centroids(new WSPointCloud);
+  centroids->points.resize(vCount);
+  WSPointCloudNormalPtr normals(new WSPointCloudNormal);
+  normals->points.resize(vCount);
+  for (size_t i = 0; i < vCount; ++i)
   {
-    std::cout << "no search result" << std::endl;
+    Eigen::Vector3f pt = centroidVec[i];
+    centroids->points[i].x = pt.x();
+    centroids->points[i].y = pt.y();
+    centroids->points[i].z = pt.z();
+    Eigen::Vector3f nm = normalVec[i];
+    normals->points[i].normal_x = nm.x();
+    normals->points[i].normal_y = nm.y();
+    normals->points[i].normal_z = nm.z();
   }
-  return bFlip;
+
+  voxelCentroid = centroids;
+  return normals;
 }
 
 bool PCLOctree::IsOutsideVoxel(const WSPoint& point, const Eigen::Vector3f& refNormal)
@@ -218,7 +282,7 @@ bool PCLOctree::IsOutsideVoxel(const WSPoint& point, const Eigen::Vector3f& refN
 
 int PCLOctree::BoxSearch(const Eigen::Vector3f& minPt,
               const Eigen::Vector3f& maxPt,
-              std::vector<int> indices) const
+              std::vector<int>& indices) const
 {
   return m_os->boxSearch(minPt, maxPt, indices);
 }
@@ -431,62 +495,3 @@ void PCLOctree::VoxelOutsideCenters(std::vector<VoxelNormals>& outsideNormals) c
     outsideNormals.push_back(std::make_pair(center, outsideCenters));
   }
 }
-
-// void CreateViewpointsWithAverageNormal(const WSPointCloudPtr cloud, OctreeSearch os, double distance, std::vector<Eigen::Affine3f>& cameras)
-// {
-//   // find all voxel centroids and average normal of the voxel
-//   PCLOctree octree;
-//   WSPointCloudNormalPtr vNormal(new WSPointCloudNormal);
-//   WSPointCloudPtr vCloud = octree.EvaluateNormals(cloud, os, vNormal);
-//
-//   // find all camera poses
-//   std::vector<Eigen::Affine3f> cameraPoseVec;
-//   for (size_t i = 0; i < vCloud->points.size(); ++i)
-//   {
-//     Eigen::Vector3f point(vCloud->points[i].x, vCloud->points[i].y, vCloud->points[i].z);
-//     Eigen::Vector3f nm(vNormal->points[i].normal_x, vNormal->points[i].normal_y, vNormal->points[i].normal_z);
-//     Eigen::Vector3f camera;
-//     if (CameraPosition(point, nm, os.getResolution(), distance, camera))
-//       cameras.push_back(octree.CameraPose(camera,-nm));
-//   }
-// }
-//
-// void CubeFaceCenter(const Eigen::Vector3f& center, double sideLen, std::vector<Eigen::Vector3f>& faceCenters)
-// {
-//   Eigen::Vector3f v1(center.x()-0.5*sideLen,center.y(),center.z());
-//   Eigen::Vector3f v2(center.x()+0.5*sideLen,center.y(),center.z());
-//   Eigen::Vector3f v3(center.x(),center.y()-0.5*sideLen,center.z());
-//   Eigen::Vector3f v4(center.x(),center.y()+0.5*sideLen,center.z());
-//   Eigen::Vector3f v5(center.x(),center.y(),center.z()-0.5*sideLen);
-//   Eigen::Vector3f v6(center.x(),center.y(),center.z()+0.5*sideLen);
-//   faceCenters.push_back(v1);
-//   faceCenters.push_back(v2);
-//   faceCenters.push_back(v3);
-//   faceCenters.push_back(v4);
-//   faceCenters.push_back(v5);
-//   faceCenters.push_back(v6);
-// }
-//
-// void CreateViewpointsWithVoxelCube(const WSPointCloudPtr cloud, OctreeSearch os, double distance, std::vector<Eigen::Affine3f>& cameras)
-// {
-//   PCLOctree octree;
-//   double voxelLen = sqrt(os.getVoxelSquaredSideLen());
-//   for (size_t i = 0; i < cloud->points.size(); ++i)
-//   {
-//     Eigen::Vector3f center(cloud->points[i].x, cloud->points[i].y, cloud->points[i].z);
-//     std::vector<Eigen::Vector3f> faceCenters;
-//     CubeFaceCenter(center,voxelLen,faceCenters);
-//     for (size_t j = 0; j < faceCenters.size(); j++)
-//     {
-//       Eigen::Vector3f nm = (faceCenters[j]-center).normalized();
-//       std::vector<int> intersectIndices;
-//       int nInterSectVoxel = os.getIntersectedVoxelIndices(center,nm,intersectIndices);
-//       if (nInterSectVoxel <= 1)
-//       {
-//         Eigen::Vector3f camera;
-//         if (CameraPosition(center, nm, os.getResolution(), distance, camera))
-//           cameras.push_back(octree.CameraPose(camera,-nm));
-//       }
-//     }
-//   }
-// }
