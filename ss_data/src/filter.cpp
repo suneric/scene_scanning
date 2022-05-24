@@ -35,6 +35,8 @@ WSPointCloudPtr PCLFilter::FilterPassThrough(const WSPointCloudPtr cloud, const 
   if (cloud == nullptr)
     return nullptr;
 
+  std::cout << "Filtering: pass through z out of [" << limit_min << "," << limit_max << "]." << std::endl;
+
   WSPointCloudPtr passCloud(new WSPointCloud());
   pcl::PassThrough<pcl::PointXYZRGB> pass;
   pass.setInputCloud(cloud);
@@ -50,6 +52,8 @@ WSPointCloudPtr PCLFilter::FilterPCLPoint(const WSPointCloudPtr cloud, float lea
   if (cloud == nullptr)
     return nullptr;
 
+  std::cout << "Filtering: downsampling with " << leafSize << " meter neighbor distance." << std::endl;
+
   WSPointCloudPtr voxelCloud(new WSPointCloud());
   pcl::VoxelGrid<WSPoint> sor;
   sor.setInputCloud(cloud);
@@ -60,8 +64,18 @@ WSPointCloudPtr PCLFilter::FilterPCLPoint(const WSPointCloudPtr cloud, float lea
 
 WSPointCloudPtr PCLFilter::FilterPCLPointSOR(const WSPointCloudPtr cloud, int neighbor, float thresh)
 {
+  /*
+  remove outlier
+  The number of neighbors to analyze for each point is set to 50,
+  and the standard deviation multiplier to 1. What this means is
+  that all points who have a distance larger than 1 standard
+  deviation of the mean distance to the query point will be marked
+  as outliers and removed.
+  */
   if (cloud == nullptr)
     return nullptr;
+
+  std::cout << "Filtering: outlier with " << neighbor << " samples in " << thresh << " standard deviation." << std::endl;
 
   WSPointCloudPtr sorCloud(new WSPointCloud());
   pcl::StatisticalOutlierRemoval<WSPoint> sor;

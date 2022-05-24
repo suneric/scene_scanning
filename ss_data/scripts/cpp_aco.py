@@ -4,7 +4,6 @@ it could be divided into two problems: first, solving the set covering problem t
 viewpoints among a bounch of candidate viewpoints that fully cover the area of interest; second, solving
 the traverling salesman problem to find a shortest visit path among the set of selected viewpoints.
 """
-import time
 import random
 import numpy as np
 import math
@@ -14,6 +13,7 @@ import argparse
 import copy
 from map import *
 import pandas as pd
+from datetime import datetime
 
 np.random.seed(124)
 
@@ -472,19 +472,22 @@ if __name__ == '__main__':
     vpGenerator = ViewPointGenerator()
     vps = vpGenerator.load(os.path.join(args.load, args.vpsfile))
 
-    startIdx = 0 #np.random.randint(len(vps))
+    startIdx = np.random.randint(len(vps))
     scp = SCPSolver(vps,startIdx,coverage=args.tc)
     minvps = scp.computeMinimumCoveringViewpoints(iter=args.scIter)
     # vpGenerator.save(os.path.join(args.load, args.trajfile),minvps)
 
+    t0 = datetime.now()
     # use ACO to solve TSP
     ants = args.ants
     if ants < 0:
         ants = len(minvps)
     tspACO = ACO(vps=minvps, startIdx=startIdx, ants=ants, alpha=args.alpha, beta=args.beta, rho=args.rho)
     progress, bestvps = tspACO.run(args.acIter)
+    t1 = datetime.now()
 
     # save trajectory
+    print("ACO find {} viewpoints for {:.2f}% coverage in {}.".format(len(bestvps), args.tc*100.0, str(t1-t0)))
     traj_file = os.path.join(sys.path[0],'..','trajectory/aco_best.txt')
     vpGenerator.save(traj_file, alterTour(bestvps))
     # save training statistics

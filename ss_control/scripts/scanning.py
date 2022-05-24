@@ -12,41 +12,14 @@ from transform import QuadrotorTransform
 from controller import UAVController
 from sensor.camera import RealSenseD435
 from sensor.image import DepthImage, ColorImage
+from sensor.pointcloud import DataCapture
 import os
 import sys
-
-def load_trajectory(file):
-    print("load trajectory from", file)
-    transform_util = QuadrotorTransform()
-    trajectory = []
-    with open(file,'r') as reader:
-        for line in reader.read().splitlines():
-            data = line.split(" ")
-            idx = int(data[0])
-            px = float(data[1])
-            py = float(data[2])
-            pz = float(data[3])
-            ox = float(data[4])
-            oy = float(data[5])
-            oz = float(data[6])
-            ow = float(data[7])
-            pose = Pose();
-            pose.position.x = px
-            pose.position.y = py
-            pose.position.z = pz
-            pose.orientation.x = ox
-            pose.orientation.y = oy
-            pose.orientation.z = oz
-            pose.orientation.w = ow
-            quadrotor, camera = transform_util.camera2quadrotor(pose)
-            trajectory.append((quadrotor,camera))
-    reader.close()
-    # print(trajectory)
-    return trajectory
-
+import glob
+from trajectory import scanning_path
 
 class AutoScanning:
-    def __init__(self,controller,camera):
+    def __init__(self,controller,camera,scanpath,datacap):
         self.controller = controller
         self.camera = camera
 
@@ -57,8 +30,9 @@ class AutoScanning:
         self.dataPub = self.create_data_pub(self.controller.robotName)
         self.posePub = self.create_pose_pub(self.controller.robotName)
 
-        self.trajectory = load_trajectory(os.path.join(sys.path[0],'../trajectory/aco.txt'))
+        self.trajectory = scanpath.trajectory
         self.viewpoint_count = len(self.trajectory)
+        self.datacap = datacap
 
     def create_data_pub(self, robotName):
         topic = robotName+'/pointcloud'
@@ -110,6 +84,8 @@ class AutoScanning:
 
     def _scanning(self):
         print("scanning.")
+        self.datacap.scan_and_save(self.controller.transform_q2c())
+
         vp = self.viewpoint()
         pc = self.pointcloud()
         if not pc:
@@ -147,6 +123,13 @@ class AutoScanning:
         return pose, goalPose[4]
 
 if __name__ == '__main__':
+     # clean folder for save point cloud file
+    temp_folder = os.path.join(sys.path[0],'..','data/temp/')
+    files = glob.glob(temp_folder+"*")
+    for f in files:
+        print("remove ", f)
+        os.remove(f)
+
     # initialize ros node
     robotName = 'uav1'
     robotNS = '/uav1'
@@ -154,7 +137,9 @@ if __name__ == '__main__':
     rospy.sleep(2)
     controller = UAVController(robotName=robotName, robotNS=robotNS)
     camera = RealSenseD435(robotNS=robotNS)
-    auto = AutoScanning(controller, camera)
+    scanpath = scanning_path()
+    datacap = DataCapture(camera, temp_folder)
+    auto = AutoScanning(controller, camera, scanpath, datacap)
     rate = rospy.Rate(10)
     try:
         while not rospy.is_shutdown():

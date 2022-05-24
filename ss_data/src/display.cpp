@@ -39,6 +39,18 @@ WSPointCloudPtr PCDisplay::LoadPointCloud(const std::string& file)
     return nullptr;
 }
 
+bool PCDisplay::SavePointCloud(const WSPointCloudPtr cloud, const std::string& dir)
+{
+  if (cloud == nullptr)
+    return false;
+
+  std::string filePath = dir+"point_cloud.pcd";
+  int res = pcl::io::savePCDFileASCII(filePath, *cloud);
+  if (res >= 0)
+    std::cout << "save as " << filePath << std::endl;
+  return res >= 0;
+}
+
 void PCDisplay::LoadViewpoints(const std::string& file, std::vector<Eigen::Affine3f>& cameras)
 {
   std::ifstream tFile(file);

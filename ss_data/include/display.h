@@ -11,6 +11,7 @@ namespace ssv3d {
   {
     public:
       WSPointCloudPtr LoadPointCloud(const std::string& file);
+      bool SavePointCloud(const WSPointCloudPtr cloud, const std::string& dir);
       void LoadViewpoints(const std::string& file, std::vector<Eigen::Affine3f>& cameras);
       Eigen::Affine3f ViewPoint2CameraPose(const Cartesion& vp);
   };

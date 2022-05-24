@@ -61,7 +61,7 @@ void OctoMap::AddView(const Eigen::Matrix4f& viewPoint, const WSPointCloudPtr& c
 
 void OctoMap::AddPointToVoxel(const std::vector<int>& voxelIndices, const WSPointCloudPtr& cloud, std::vector<int>& occupiedIndices)
 {
-  std::cout << "Add Points" << std::endl;
+  // std::cout << "Add Points" << std::endl;
   PCLFilter filter;
   for (size_t i = 0; i < voxelIndices.size(); ++i)
   {
@@ -89,11 +89,12 @@ void OctoMap::AddPointToVoxel(const std::vector<int>& voxelIndices, const WSPoin
     occupiedIndices.push_back(vxIdx);
     // std::cout << i << " points number in voxel " << vxIdx << ":" << vCloud->points.size() << std::endl;
   }
+  std::cout << "cloud points count " << m_points.size() << std::endl;
 }
 
 void OctoMap::AddCentroidToVoxel(const std::vector<int>& voxelIndices)
 {
-  std::cout << "Add Centroid" << std::endl;
+  // std::cout << "Add Centroid" << std::endl;
   for (size_t i = 0; i < voxelIndices.size(); ++i)
   {
     int vxIdx = voxelIndices[i];
@@ -114,7 +115,7 @@ void OctoMap::AddCentroidToVoxel(const std::vector<int>& voxelIndices)
 }
 void OctoMap::AddNormalToVoxel(const std::vector<int>& voxelIndices, const Eigen::Matrix4f& viewPoint)
 {
-  std::cout << "Add Normal" << std::endl;
+  // std::cout << "Add Normal" << std::endl;
   Eigen::Vector3f refNormal = (viewPoint*Eigen::Vector4f(0,0,1,1)).head<3>().normalized();
   for (size_t i = 0; i < voxelIndices.size(); ++i)
   {
@@ -163,7 +164,7 @@ void OctoMap::AddStatusToVoxel(const Eigen::Matrix4f& viewPoint, const std::vect
 {
   // check status: 0: unknown, 1: free, 2: occupied, 3: occluded
   Eigen::Vector3f origin(viewPoint(0,3),viewPoint(1,3),viewPoint(2,3));
-  std::cout << "Add Status" << std::endl;
+  // std::cout << "Add Status" << std::endl;
   for (size_t i = 0; i < voxelIndices.size(); ++i)
   {
     int vxIdx = voxelIndices[i];

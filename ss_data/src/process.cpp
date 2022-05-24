@@ -18,6 +18,8 @@ PCLProcess::PCLProcess()
 {
   m_cloudList.clear();
   m_viewpointList.clear();
+  WSPointCloudPtr cloud(new WSPointCloud);
+  m_cloud = cloud;
 }
 
 PCLProcess::~PCLProcess()
@@ -48,7 +50,8 @@ bool PCLProcess::RegisterPointCloud(OctoMap* map)
   WSPointCloudPtr tCloud (new WSPointCloud);
   pcl::transformPointCloud (*cloud, *tCloud, trans);
   // filter pt in z in global frame
-  tCloud = filter.FilterPassThrough(tCloud,"z",0.05,10);
+  tCloud = filter.FilterPassThrough(tCloud,"z",0.05,30);
+  *m_cloud += *tCloud;
   // add point cloud to map
   map->AddView(trans, tCloud);
 

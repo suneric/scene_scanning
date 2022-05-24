@@ -12,7 +12,7 @@
 #include <pcl/PCLPointCloud2.h>
 #include <pcl/conversions.h>
 #include <pcl_conversions/pcl_conversions.h>
-
+#include <boost/filesystem.hpp>
 
 using namespace ssv3d;
 
@@ -37,18 +37,19 @@ void DataCallback(const sensor_msgs::PointCloud2ConstPtr& msg)
   if (res)
   {
     // std::cout << "update point cloud..." << std::endl;
-    std::vector<Voxel3d> occupiedVoxels, freeVoxels, occludedVoxels;
-    map.OccludedVoxels(occludedVoxels);
-    map.OccupiedVoxels(occupiedVoxels);
-    map.FreeVoxels(freeVoxels);
+    // std::vector<Voxel3d> occupiedVoxels, freeVoxels, occludedVoxels;
+    // map.OccludedVoxels(occludedVoxels);
+    // map.OccupiedVoxels(occupiedVoxels);
+    // map.FreeVoxels(freeVoxels);
     std::cout << "add point cloud to view..." << std::endl;
-    viewer.AddPointCloud(map.PointCloud());
-    for (size_t i=0; i < occupiedVoxels.size(); ++i)
-    {
-      Voxel3d v = occupiedVoxels[i];
-      // viewer.AddCube(v.Center(), v.Length(), v.Id(), 0,0,1);
-      // viewer.AddArrow(v.Centroid(),v.Normal(),0.1,v.Id(),0.1,0,1,0);
-    }
+    viewer.AddPointCloud(processor.m_cloud);
+
+    // for (size_t i=0; i < occupiedVoxels.size(); ++i)
+    // {
+    //   Voxel3d v = occupiedVoxels[i];
+    //   viewer.AddCube(v.Center(), v.Length(), v.Id(), 0,0,1);
+    //   viewer.AddArrow(v.Centroid(),v.Normal(),0.1,v.Id(),0.1,0,1,0);
+    // }
 
     // for (size_t i=0; i < freeVoxels.size(); ++i)
     // {
@@ -62,15 +63,15 @@ void DataCallback(const sensor_msgs::PointCloud2ConstPtr& msg)
     // }
   }
 
-  std::vector<int> status;
-  map.VoxelStatus(status);
-
-  std_msgs::Int64MultiArray array;
-  array.data.clear();
-  for (size_t i = 0 ; i < status.size(); ++i)
-    array.data.push_back(status[i]);
-
-  map_pub.publish(array);
+  // std::vector<int> status;
+  // map.VoxelStatus(status);
+  //
+  // std_msgs::Int64MultiArray array;
+  // array.data.clear();
+  // for (size_t i = 0 ; i < status.size(); ++i)
+  //   array.data.push_back(status[i]);
+  //
+  // map_pub.publish(array);
 }
 
 void PoseCallback(const std_msgs::Float64MultiArray::ConstPtr& msg)
@@ -104,8 +105,8 @@ int main(int argc, char **argv)
   {
     std::cout << "dynamically visualize data" << '\n';
 
-    Eigen::Vector3f vMin(-30.0,-30.0,0.0);
-    Eigen::Vector3f vMax(30.0,30.0,10.0);
+    Eigen::Vector3f vMin(-20.0,-30.0,0.0);
+    Eigen::Vector3f vMax(20.0,30.0,30.0);
 
     std::cout << "initialize..." << std::endl;
     map.CreateMap(vMin, vMax);
@@ -115,12 +116,12 @@ int main(int argc, char **argv)
     std::cout << "load data from files" << '\n';
 
     PCDisplay visualtool;
-    std::string pt_file = "/home/yufeng/catkin_ws/src/scene_scanning/ss_data/data/airliner757.pcd";
+    std::string pt_file = "/home/yufeng/catkin_ws/src/scene_scanning/ss_data/data/temp/airliner757.pcd";
     WSPointCloudPtr cloud = visualtool.LoadPointCloud(pt_file);
     viewer.AddPointCloud(cloud);
 
     std::vector<Eigen::Affine3f> cameras;
-    std::string vp_file = "/home/yufeng/catkin_ws/src/scene_scanning/ss_data/data/best.txt";
+    std::string vp_file = "/home/yufeng/catkin_ws/src/scene_scanning/ss_data/data/temp/best.txt";
     visualtool.LoadViewpoints(vp_file,cameras);
 
     double resolution = 0.5;
@@ -220,14 +221,12 @@ int main(int argc, char **argv)
 
     // load point cloud
     PCDisplay visualtool;
-    std::string pt_file = "/home/yufeng/catkin_ws/src/scene_scanning/ss_data/data/airliner757.pcd";
+    std::string pt_file = "/home/yufeng/catkin_ws/src/scene_scanning/ss_data/data/temp/airliner757.pcd";
     WSPointCloudPtr srcCloud = visualtool.LoadPointCloud(pt_file);
     viewer.AddPointCloud(srcCloud);
 
     PCLFilter filter;
     PCLViewPoint viewCreator;
-    PCLOctree octree(srcCloud,resolution,10);
-
     // generate a sub cloud for the bounding box and evaluate surface normals and cameras
     std::vector<Eigen::Affine3f> cameras;
     for (int i = 0; i < segments.size(); ++i)
@@ -235,17 +234,18 @@ int main(int argc, char **argv)
       Eigen::Vector3f refViewpoint = segments[i].first;
       BBox sbox = segments[i].second;
       WSPointCloudPtr segCloud = filter.FilterPCLPointInBBox(srcCloud,sbox,false);
-      PCLOctree segOctree(segCloud,resolution,10);
+      PCLOctree segOctree(segCloud,resolution,3);
       bool bSampling = false;
       viewCreator.GenerateCameraPositions(segOctree,distance,height_min,height_max,refViewpoint,bSampling,cameras);
     }
 
     // filter camera views
+    PCLOctree voxelOctree(srcCloud,resolution,10);
     std::vector<Eigen::Affine3f> cameras_valid;
     for (size_t i = 0; i < cameras.size(); ++i)
     {
       Eigen::Affine3f camera = cameras[i];
-      if (!viewCreator.FilterViewPoint(octree, camera))
+      if (!viewCreator.FilterViewPoint(voxelOctree, camera))
         cameras_valid.push_back(camera);
     }
 
@@ -254,7 +254,7 @@ int main(int argc, char **argv)
     for (size_t i = 0; i < cameras_valid.size(); ++i)
     {
       std::vector<int> visibleVoxels;
-      WSPointCloudPtr viewCloud = viewCreator.CameraViewVoxels(octree, cameras_valid[i],visibleVoxels);
+      WSPointCloudPtr viewCloud = viewCreator.CameraViewVoxels(voxelOctree, cameras_valid[i],visibleVoxels);
       viewVoxelMap.insert(std::make_pair(static_cast<int>(i), visibleVoxels));
     }
 
@@ -274,6 +274,46 @@ int main(int argc, char **argv)
     fileName.append(str_dist).append("-").append(str_res).append(".txt");
     viewCreator.SaveToFile(fileName, cameras, viewVoxelMap);
     std::cout << "save to " << fileName << std::endl;
+  }
+  else if (display == 4)
+  {
+    double resolution = 0.5;
+    if (argc > 2) // downsampling resolution
+      resolution = atof(argv[2]);
+
+    std::vector<std::string> files;
+    std::string dir("/home/yufeng/catkin_ws/src/scene_scanning/ss_control/data/temp/");
+    std::vector<std::string> allfiles;
+    boost::filesystem::directory_iterator itr(dir);
+    for (; itr != boost::filesystem::directory_iterator(); ++itr)
+    {
+      if (boost::filesystem::is_regular_file(itr->status()));
+        allfiles.push_back(itr->path().string());
+    }
+
+    WSPointCloudPtr cloud(new WSPointCloud());
+
+    PCLFilter filter;
+    int all = allfiles.size();
+    for (int i = 0; i < all; i++)
+    {
+      std::string file = allfiles[i];
+      std::cout << "pcl == load " << std::to_string(i) << "/" << all << " point cloud from " << file << std::endl;
+      WSPointCloudPtr temp(new WSPointCloud());
+      int res = pcl::io::loadPCDFile(file, *temp);
+      if (res >= 0)
+      {
+        temp = filter.FilterPassThrough(temp,"z",0.2,30);
+        temp = filter.FilterPCLPointSOR(temp,50,1);
+        temp = filter.FilterPCLPoint(temp,resolution);
+        *cloud += *temp;
+      }
+    }
+
+    viewer.AddPointCloud(cloud);
+    PCDisplay visualtool;
+    std::string out("/home/yufeng/catkin_ws/src/scene_scanning/ss_data/data/");
+    visualtool.SavePointCloud(cloud,out);
   }
 
   ros::Rate r(10);

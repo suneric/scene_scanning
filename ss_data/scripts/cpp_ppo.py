@@ -2,7 +2,6 @@
 discrete coverage path planning problem
 with monte carlo tree search algorithm
 """
-import time
 import numpy as np
 import math
 from util import *
@@ -66,12 +65,8 @@ class CPPEnv(object):
         vp = self.util.viewpoints[vpIdx]
 
         # calculate traveling distance
-        dist = 0.0
-        if vpIdx == self.vpIdx:
-            dist = 100 # give a large distance for the same viewpoint
-        else:
-            vp0 = self.util.viewpoints[self.vpIdx]
-            dist = vpDistance(vp0, vp)
+        vp0 = self.util.viewpoints[self.vpIdx]
+        dist = vpDistance(vp0, vp)
         self.vpIdx = vpIdx
 
         # move to new vp and update the status
@@ -85,14 +80,11 @@ class CPPEnv(object):
         occupiedCount_new = len(np.nonzero(self.voxelState)[0])
         coverage_add = 100.0*(occupiedCount_new - self.occupiedCount)/len(self.util.voxels)
         self.occupiedCount = occupiedCount_new
-        dist_penaulty = -0.1*dist
         vp_penaulty = -0.1*(self.vpsState[vpIdx]-1) # give penaulty for revisiting a viewpoint
+        dist_penaulty = -0.01*dist
         reward = coverage_add + dist_penaulty + vp_penaulty
 
         coverage = self.coverage()
-        if coverage > self.targetCoverage:
-            reward += 50.0
-
         nbvps = self.util.neighbors(vpIdx)
 
         obs = np.zeros((2,len(self.util.voxels)))
@@ -172,7 +164,7 @@ Agent NN
 def mlp_net(inputs_dim, outputs_dim, outputs_activation='softmax'):
     inputs = keras.Input(shape=inputs_dim)
     x = layers.Dense(int(inputs_dim[1]/3), activation = 'relu')(inputs)
-    x = layers.Dense(int(inputs_dim[1]/5), activation = 'relu')(x)
+    x = layers.Dense(64, activation = 'relu')(x)
     x = layers.Flatten()(x)
     outputs = layers.Dense(outputs_dim, activation = outputs_activation)(x)
     return keras.Model(inputs=inputs, outputs=outputs)
@@ -339,12 +331,14 @@ if __name__ == "__main__":
     agent = PPOAgent(state_dim=state_dim, action_size=action_size, clip_ratio=0.2, lr_a=1e-4, lr_c=3e-4, beta=5e-3)
     buffer = ReplayBuffer(input_shape=state_dim, action_size=action_size, size=buffer_cap)
 
+    t0 = datetime.now()
+
     bestvps = []
     bestScore = 0.0
     bestCoverage = 0.0
     success_counter = 0
     for ep in range(args.max_ep):
-        vpIdx = 0 #np.random.randint(len(vps))
+        vpIdx = np.random.randint(len(vps))
         vp,nbvps,obs,coverage = env.reset(vpIdx)
         traj = [vp]
         epReturn, epLength = 0, 0
@@ -376,6 +370,7 @@ if __name__ == "__main__":
             print("ppo training with ",size," experiences...")
             agent.train(data=buffer.get(), batch_size=size, iter_a=80, iter_c=80)
 
-    print("PPO find {} viewpoints for {:.2f}% coverage.".format(len(bestvps), bestCoverage*100))
+    t1 = datetime.now()
+    print("PPO find {} viewpoints for {:.2f}% coverage in {}.".format(len(bestvps), bestCoverage*100, str(t1-t0)))
     traj_file = os.path.join(sys.path[0],'..','trajectory/ppo_best.txt')
     vpGenerator.save(traj_file,alterTour(bestvps))

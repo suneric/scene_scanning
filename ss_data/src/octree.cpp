@@ -150,8 +150,7 @@ WSPointCloudNormalPtr PCLOctree::VoxelAverageNormals_Sampling(
 
     // check visibility
     Eigen::Vector3f centerPt = Eigen::Vector3f(point.x, point.y,point.z);
-    Eigen::Vector3f refPt = centerPt + 3.0*nm;
-    int nRes = IntersectedOccupiedVoxels(refPt, centerPt);
+    int nRes = IntersectedOccupiedVoxels(refViewpoint, centerPt);
     if (nRes > 1)
       continue;
 
@@ -224,8 +223,7 @@ WSPointCloudNormalPtr PCLOctree::VoxelAverageNormals_All(
 
     // check visibility
     Eigen::Vector3f centerPt = Eigen::Vector3f(point.x, point.y,point.z);
-    Eigen::Vector3f refPt = centerPt + 3.0*nm;
-    int nRes = IntersectedOccupiedVoxels(refPt, centerPt);
+    int nRes = IntersectedOccupiedVoxels(refViewpoint, centerPt);
     if (nRes > 1)
       continue;
 

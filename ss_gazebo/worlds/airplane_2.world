@@ -14,14 +14,15 @@
           <pose>0 0 0 1.5707963 0 3.1415926</pose>
           <geometry>
             <mesh>
-              <uri>/home/yufeng/catkin_ws/src/scene_scanning/ss_gazebo/media/models/airplane_2/Boeing757.obj</uri>
+              <uri>file://media/models/airplane_2/Boeing757.obj</uri>
               <scale>0.5 0.5 0.5</scale>
             </mesh>
           </geometry>
           <material>
             <lighting>1</lighting>
             <script>
-              <uri>/home/yufeng/catkin_ws/src/scene_scanning/ss_gazebo/media/models/airplane_2/Boeing757.mtl</uri>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Yellow</name>
             </script>
             <shader type='pixel'/>
           </material>
@@ -34,7 +35,7 @@
           <pose frame=''>0 0 0 1.5707963 0 3.1415926</pose>
           <geometry>
             <mesh>
-              <uri>/home/yufeng/catkin_ws/src/scene_scanning/ss_gazebo/media/models/airplane_2/Boeing757.obj</uri>
+              <uri>file://media/models/airplane_2/Boeing757.obj</uri>
               <scale>0.5 0.5 0.5</scale>
             </mesh>
           </geometry>
@@ -86,6 +87,71 @@
         </collision>
       </link>
     </model>
+    <light name='point_light_0' type='point'>
+      <pose>0 -25 0 0 -0 0</pose>
+      <diffuse>0.5 0.5 0.5 1</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+      <attenuation>
+        <range>20</range>
+        <constant>0.5</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <cast_shadows>0</cast_shadows>
+      <direction>0 0 -1</direction>
+    </light>
+    <light name='point_light_1' type='point'>
+      <pose>0 0 0 0 -0 0</pose>
+      <diffuse>0.5 0.5 0.5 1</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+      <attenuation>
+        <range>20</range>
+        <constant>0.5</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <cast_shadows>0</cast_shadows>
+      <direction>0 0 -1</direction>
+    </light>
+    <light name='point_light_2' type='point'>
+      <pose>0 25 0 0 -0 0</pose>
+      <diffuse>0.5 0.5 0.5 1</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+      <attenuation>
+        <range>20</range>
+        <constant>0.5</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <cast_shadows>0</cast_shadows>
+      <direction>0 0 -1</direction>
+    </light>
+    <light name='point_light_3' type='point'>
+      <pose>-15 0 0 0 -0 0</pose>
+      <diffuse>0.5 0.5 0.5 1</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+      <attenuation>
+        <range>20</range>
+        <constant>0.5</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <cast_shadows>0</cast_shadows>
+      <direction>0 0 -1</direction>
+    </light>
+    <light name='point_light_4' type='point'>
+      <pose>15 0 0 0 -0 0</pose>
+      <diffuse>0.5 0.5 0.5 1</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+      <attenuation>
+        <range>20</range>
+        <constant>0.5</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <cast_shadows>0</cast_shadows>
+      <direction>0 0 -1</direction>
+    </light>
     <gui fullscreen='0'>
       <camera name='user_camera'>
         <pose frame=''>60 -80 40 0 0.275643 2.21619</pose>

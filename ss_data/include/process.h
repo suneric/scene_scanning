@@ -11,6 +11,8 @@ namespace ssv3d
     PCLProcess();
     ~PCLProcess();
 
+    WSPointCloudPtr m_cloud;
+
     void AddViewPoint(const std::vector<double>& vp);
     void AddPointCloud(const WSPointCloudPtr& cloud);
     bool RegisterPointCloud(OctoMap* map);

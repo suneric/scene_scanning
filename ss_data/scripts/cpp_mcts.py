@@ -2,7 +2,6 @@
 discrete coverage path planning problem
 with monte carlo tree search algorithm
 """
-import time
 import numpy as np
 import math
 from util import *
@@ -15,6 +14,7 @@ import copy
 import argparse
 import csv
 import pandas as pd
+from datetime import datetime
 
 np.random.seed(124)
 
@@ -40,7 +40,10 @@ class MCTSState(object):
         return a score indicating how good the state is
         considering coverage, overlap and traveled distance
         """
-        s = 100*self.coverage-0.1*self.traveledDist
+        bonus = 0
+        # if self.coverage == 1.0:
+        #     bonus = 50
+        s = 100*self.coverage-0.1*self.traveledDist + bonus
         return s
 
     def neighbors(self):
@@ -269,6 +272,7 @@ if __name__ == "__main__":
     util = ViewPointUtil2(vps=vps,overlap=args.overlap,ad=args.ad)
     util.buildNeighborMap()
 
+    t0 = datetime.now()
     # monte carlo tree search
     startIdx = 0 #np.random.randint(len(vps))
     startVp = util.viewpoints[startIdx]
@@ -277,9 +281,9 @@ if __name__ == "__main__":
     mcts = MonteCarloTreeSearch(util,root,cparam=args.cp,decay=args.dr,targetCoverage=args.coverage)
     node, progress = mcts.search(iteration=args.sn,fe=args.fe)
     bestvps, coverage = mcts.test()
-
+    t1 = datetime.now()
     # save trajectory
-    print("Monte Carlo Tree Search find {} viewpoints for {:.2f}% coverage.".format(len(bestvps), coverage*100))
+    print("Monte Carlo Tree Search find {} viewpoints for {:.2f}% coverage in {}.".format(len(bestvps), coverage*100, str(t1-t0)))
     traj_file = os.path.join(sys.path[0],'..','trajectory/mcts_best.txt')
     vpGenerator.save(traj_file,alterTour(bestvps))
 

@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="display"/>
+  <!--usage: roslaunch ss_data data_process.launch display:="2 3.0 0.5"-->
+  <arg name="display" default="0"/>
   <node name="data_process_node" pkg="ss_data" type="ss_data_node" output="screen" args="$(arg display)"/>
 </launch>
