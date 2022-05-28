@@ -16,6 +16,9 @@ import csv
 import pandas as pd
 from datetime import datetime
 
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
 np.random.seed(124)
 
 """
@@ -208,7 +211,7 @@ class MonteCarloTreeSearch(object):
             r = v.rollout()
             v.backpropagate(r)
             vps, coverage = self.test()
-            progress.append(coverage)
+            progress.append(coverage*100)
             print("iteration {}, epsilon {:.4f}, viewpoints explore {}, coverage {:.2f}%".format(i,self.epsilon,len(vps),coverage*100))
             if coverage >= self.targetCoverage:
                 print("desired coverage achieved {:.2f}%".format(self.targetCoverage*100))
@@ -287,8 +290,27 @@ if __name__ == "__main__":
     traj_file = os.path.join(sys.path[0],'..','trajectory/mcts_best.txt')
     vpGenerator.save(traj_file,alterTour(bestvps))
 
-    # save training statistics
-    # statFile = os.path.join(args.load, "mcts.csv")
-    # dict = {'Iteration': [i for i in range(len(progress))], 'Coverage': progress}
-    # df = pd.DataFrame(dict)
-    # df.to_csv(statFile)
+    # plot
+    iter = [i+1 for i in range(len(progress))]
+    fig = go.Figure()
+    title = "MCTS - Coverage"
+    fig.add_trace(go.Scatter(
+        x = iter,
+        y = smoothExponential(progress,0.995),
+        # mode='lines+markers',
+        name="Coverage (%)",
+        marker=dict(color="#552233")
+        # line = dict(shape = 'linear', color = "#552233", width = 1, dash = 'dash')
+        ))
+    fig.update_layout(
+        title=title,
+        xaxis_title="Iteration",
+        yaxis_title="Coverage (%)",
+        font=dict(
+            family="Arial",
+            size=20,
+            color="Black"
+        ),
+        plot_bgcolor="rgb(255,255,255)"
+    )
+    fig.show()

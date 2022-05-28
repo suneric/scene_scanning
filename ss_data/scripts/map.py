@@ -194,6 +194,7 @@ class ViewPointGenerator:
         with open(file,'r') as reader:
             for line in reader.read().splitlines():
                 data = line.split(" ")
+                print(data)
                 id = int(data[0])
                 px = float(data[1])
                 py = float(data[2])
@@ -203,9 +204,10 @@ class ViewPointGenerator:
                 oz = float(data[6])
                 ow = float(data[7])
                 vp = ViewPoint(id,px,py,pz,ox,oy,oz,ow)
-                voxels = data[8:len(data)]
-                for v in voxels:
-                    vp.voxels.add(int(v))
+                if len(data) > 8:
+                    voxels = data[8:len(data)]
+                    for v in voxels:
+                        vp.voxels.add(int(v))
                 vps.append(vp)
         reader.close()
         print("load {} viewpoints from {}.".format(len(vps), file))
@@ -224,10 +226,11 @@ class ViewPointGenerator:
                      + str(vp.camera.orientation.x) + " "\
                      + str(vp.camera.orientation.y) + " "\
                      + str(vp.camera.orientation.z) + " "\
-                     + str(vp.camera.orientation.w) + " "
-                if not vp.voxels:
+                     + str(vp.camera.orientation.w)
+                if not vp.voxels or len(vp.voxels) == 0:
                     line += "\n"
                 else:
+                    line += " "
                     i = 0
                     for v in vp.voxels:
                         if i == len(vp.voxels)-1:

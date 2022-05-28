@@ -42,6 +42,7 @@ namespace ssv3d
   public:
     void GenerateCameraPositions(
       const PCLOctree& tree,
+      const std::vector<int>& vxIndices,
       double distance,
       double height_min,
       double height_max,
@@ -64,7 +65,9 @@ namespace ssv3d
       const std::string& input,
       std::vector<Eigen::Affine3f>& cameras
     );
-    bool FilterViewPoint(const PCLOctree& tree, const Eigen::Affine3f& camera);
+    bool FilterViewPoint(const PCLOctree& tree, const Eigen::Affine3f& camera, double heightMin, double heightMax);
+
+    bool QuadrotorBBox(const Eigen::Affine3f& camera, Eigen::Vector3f& minPt, Eigen::Vector3f& maxPt);
 
   private:
     Eigen::Affine3f ViewPoint2CameraPose(const Cartesion& vp);

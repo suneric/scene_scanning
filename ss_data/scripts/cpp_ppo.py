@@ -23,6 +23,9 @@ import scipy.signal
 import os
 from datetime import datetime
 
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
 np.random.seed(124)
 
 """
@@ -36,12 +39,14 @@ class CPPEnv(object):
         self.occupiedCount = len(np.nonzero(self.voxelState)[0])
         self.vpIdx = 0
         self.targetCoverage = coverage
+        self.totalDist = 0.0
 
     def reset(self,vpIdx=0):
         self.vpIdx = vpIdx
         self.vpsState = [0]*len(self.util.viewpoints)
         self.voxelState = [0]*len(self.util.voxels)
         self.occupiedCount = len(np.nonzero(self.voxelState)[0])
+        self.totalDist = 0.0
 
         vp = self.util.viewpoints[vpIdx]
         self.vpsState[vpIdx] += 1
@@ -67,6 +72,7 @@ class CPPEnv(object):
         # calculate traveling distance
         vp0 = self.util.viewpoints[self.vpIdx]
         dist = vpDistance(vp0, vp)
+        self.totalDist += dist
         self.vpIdx = vpIdx
 
         # move to new vp and update the status
@@ -95,6 +101,9 @@ class CPPEnv(object):
 
     def coverage(self):
         return float(self.occupiedCount) / float(len(self.util.voxels))
+
+    def distance(self):
+        return self.totalDist
 
 """
 Replay Buffer, strore experiences and calculate total rewards, advanteges
@@ -293,7 +302,6 @@ class PPOAgent:
         print("training Actor network...")
         self.Critic.fit(states, returns, iter_c, batch_size)
 
-
 def getParameters():
     parser = argparse.ArgumentParser()
     parser.add_argument('--load', type=str, default=None)
@@ -337,6 +345,10 @@ if __name__ == "__main__":
     bestScore = 0.0
     bestCoverage = 0.0
     success_counter = 0
+    epIndices = []
+    epReturns = []
+    epCoverages = []
+    epDists = []
     for ep in range(args.max_ep):
         vpIdx = np.random.randint(len(vps))
         vp,nbvps,obs,coverage = env.reset(vpIdx)
@@ -356,6 +368,11 @@ if __name__ == "__main__":
                 success_counter += 1
                 break;
 
+        epIndices.append(ep+1)
+        epReturns.append(epReturn)
+        epCoverages.append(coverage*100)
+        epDists.append(env.distance())
+
         if epReturn > bestScore:
             bestvps = traj
             bestScore = epReturn
@@ -374,3 +391,43 @@ if __name__ == "__main__":
     print("PPO find {} viewpoints for {:.2f}% coverage in {}.".format(len(bestvps), bestCoverage*100, str(t1-t0)))
     traj_file = os.path.join(sys.path[0],'..','trajectory/ppo_best.txt')
     vpGenerator.save(traj_file,alterTour(bestvps))
+
+    # plot
+    fig = go.Figure()
+    title = "PPO - Total Reward and Coverage"
+    fig.add_trace(go.Scatter(
+        x = epIndices,
+        y = smoothExponential(epReturns,0.995),
+        # mode='lines+markers',
+        name="Total Reward",
+        marker=dict(color="#0075DC")
+        # line = dict(shape = 'linear', color = "#0075DC", width = 1, dash = 'solid')
+        ))
+    fig.add_trace(go.Scatter(
+        x = epIndices,
+        y = smoothExponential(epCoverages,0.995),
+        # mode='lines+markers',
+        name="Coverage (%)",
+        marker=dict(color="#552233")
+        # line = dict(shape = 'linear', color = "#552233", width = 1, dash = 'dash')
+        ))
+    # fig.add_trace(go.Scatter(
+    #     x = epIndices,
+    #     y = smoothExponential(epDists,0.99),
+    #     mode='lines+markers',
+    #     name="Flying Distance (m)",
+    #     marker=dict(color="#ff5511")
+    #     # line = dict(shape = 'linear', color = "#ff22dd", width = 1, dash = 'dot')
+    #     ))
+    fig.update_layout(
+        title=title,
+        xaxis_title="Episode",
+        yaxis_title="",
+        font=dict(
+            family="Arial",
+            size=20,
+            color="Black"
+        ),
+        plot_bgcolor="rgb(255,255,255)"
+    )
+    fig.show()

@@ -113,6 +113,7 @@ int main(int argc, char **argv)
   }
   else if (display == 1)
   {
+    // display model and trajectory
     std::cout << "load data from files" << '\n';
 
     PCDisplay visualtool;
@@ -123,6 +124,35 @@ int main(int argc, char **argv)
     std::vector<Eigen::Affine3f> cameras;
     std::string vp_file = "/home/yufeng/catkin_ws/src/scene_scanning/ss_data/data/temp/best.txt";
     visualtool.LoadViewpoints(vp_file,cameras);
+
+    // display viewpoint and its voxels
+    // Eigen::Affine3f camera = cameras[3];
+    // viewer.AddCoordinateSystem(camera,3,2.0,0,true);
+    //
+    // double resolution = 0.5;
+    // PCLOctree octree(cloud,resolution,3);
+    // double voxelLen = octree.VoxelSideLength();
+    // PCLViewPoint viewCreator;
+    // std::vector<int> indices;
+    // WSPointCloudPtr voxelCloud = viewCreator.CameraViewVoxels(octree, camera, indices);
+    // std::vector<WSPoint> vCenters;
+    // std::vector<int> coveredVoxels;
+    // for (size_t j = 0; j < voxelCloud->points.size(); ++j)
+    // {
+    //   WSPoint vCenter = voxelCloud->points[j];
+    //   int idx = octree.VoxelIndex(vCenter);
+    //   if (std::find(coveredVoxels.begin(), coveredVoxels.end(), idx) == coveredVoxels.end())
+    //   {
+    //     coveredVoxels.push_back(idx);
+    //     vCenters.push_back(vCenter);
+    //   }
+    // }
+    //
+    // for (size_t k = 0; k < vCenters.size(); ++k)
+    // {
+    //   WSPoint c = vCenters[k];
+    //   viewer.AddCube(c,voxelLen,k,1,0,0);
+    // }
 
     double resolution = 0.5;
     PCLOctree octree(cloud,resolution,10);
@@ -169,17 +199,21 @@ int main(int argc, char **argv)
         }
       }
 
-      for (size_t k = 0; k < vCenters.size(); ++k)
-      {
-        WSPoint c = vCenters[k];
-        viewer.AddCube(c,voxelLen,i*100+k,0,0,1);
-      }
+      // for (size_t k = 0; k < vCenters.size(); ++k)
+      // {
+      //   WSPoint c = vCenters[k];
+      //   viewer.AddCube(c,voxelLen,i*100+k,0,0,1);
+      // }
     }
 
+    std::vector<int> allVoxels;
+    int totalVoxel = octree.VoxelIndices(allVoxels);
+    std::cout << "total voxels " << totalVoxel << "covered voxels" << coveredVoxels.size() << std::endl;
     std::cout << cameras.size() << " viewpoints with trajectory length of " << distance << " meters." << std::endl;
   }
   else if (display == 2)
   {
+    // generate viewpoints
     double distance = 3.0;
     double resolution = 0.5;
 
@@ -224,28 +258,30 @@ int main(int argc, char **argv)
     std::string pt_file = "/home/yufeng/catkin_ws/src/scene_scanning/ss_data/data/temp/airliner757.pcd";
     WSPointCloudPtr srcCloud = visualtool.LoadPointCloud(pt_file);
     viewer.AddPointCloud(srcCloud);
+    std::cout << "load model " << pt_file << std::endl;
 
     PCLFilter filter;
     PCLViewPoint viewCreator;
-    // generate a sub cloud for the bounding box and evaluate surface normals and cameras
+    PCLOctree voxelOctree(srcCloud,resolution,3);
+
+    bool bUseSamplingPoint = false;
     std::vector<Eigen::Affine3f> cameras;
     for (int i = 0; i < segments.size(); ++i)
     {
       Eigen::Vector3f refViewpoint = segments[i].first;
       BBox sbox = segments[i].second;
-      WSPointCloudPtr segCloud = filter.FilterPCLPointInBBox(srcCloud,sbox,false);
-      PCLOctree segOctree(segCloud,resolution,3);
-      bool bSampling = false;
-      viewCreator.GenerateCameraPositions(segOctree,distance,height_min,height_max,refViewpoint,bSampling,cameras);
+      std::vector<int> vxCenters;
+      if (voxelOctree.VoxelIndicesInBox(sbox, vxCenters) > 0)
+        viewCreator.GenerateCameraPositions(voxelOctree, vxCenters, distance,height_min,height_max,refViewpoint,bUseSamplingPoint,cameras);
     }
+    std::cout << "generate " << cameras.size() << " viewpoints." << std::endl;
 
     // filter camera views
-    PCLOctree voxelOctree(srcCloud,resolution,10);
     std::vector<Eigen::Affine3f> cameras_valid;
     for (size_t i = 0; i < cameras.size(); ++i)
     {
       Eigen::Affine3f camera = cameras[i];
-      if (!viewCreator.FilterViewPoint(voxelOctree, camera))
+      if (!viewCreator.FilterViewPoint(voxelOctree, camera, height_min, height_max))
         cameras_valid.push_back(camera);
     }
 
@@ -272,12 +308,13 @@ int main(int argc, char **argv)
     std::string str_res = oss2.str();
     std::string fileName("/home/yufeng/catkin_ws/src/scene_scanning/ss_data/viewpoint/");
     fileName.append(str_dist).append("-").append(str_res).append(".txt");
-    viewCreator.SaveToFile(fileName, cameras, viewVoxelMap);
+    viewCreator.SaveToFile(fileName, cameras_valid, viewVoxelMap);
     std::cout << "save to " << fileName << std::endl;
   }
-  else if (display == 4)
+  else if (display == 3)
   {
-    double resolution = 0.5;
+    // merge files to one file
+    double resolution = 0.0;
     if (argc > 2) // downsampling resolution
       resolution = atof(argv[2]);
 
@@ -301,13 +338,16 @@ int main(int argc, char **argv)
       std::cout << "pcl == load " << std::to_string(i) << "/" << all << " point cloud from " << file << std::endl;
       WSPointCloudPtr temp(new WSPointCloud());
       int res = pcl::io::loadPCDFile(file, *temp);
-      if (res >= 0)
+      if (res < 0)
+        continue;
+
+      if (resolution > 0)
       {
         temp = filter.FilterPassThrough(temp,"z",0.2,30);
         temp = filter.FilterPCLPointSOR(temp,50,1);
         temp = filter.FilterPCLPoint(temp,resolution);
-        *cloud += *temp;
       }
+      *cloud += *temp;
     }
 
     viewer.AddPointCloud(cloud);

@@ -17,6 +17,7 @@ import os
 import sys
 import glob
 from trajectory import scanning_path
+from datetime import datetime
 
 class AutoScanning:
     def __init__(self,controller,camera,scanpath,datacap):
@@ -34,6 +35,9 @@ class AutoScanning:
         self.viewpoint_count = len(self.trajectory)
         self.datacap = datacap
 
+        self.time_start = 0
+        self.time_end = 0
+
     def create_data_pub(self, robotName):
         topic = robotName+'/pointcloud'
         return rospy.Publisher(topic, PointCloud2, queue_size=1)
@@ -49,6 +53,8 @@ class AutoScanning:
         print("landing...")
         self.isLanding == True
         self.status = "done"
+        self.time_end = datetime.now()
+        print("scanning spends {}".format(str(self.time_end-self.time_start)))
 
     def takeoff(self):
         self.controller.takeoff(self._takeoff_cb)
@@ -57,6 +63,7 @@ class AutoScanning:
         print("takeoff...")
         self.isTakeoff = True
         self.status = 'ready'
+        self.time_start = datetime.now()
 
     def fly_and_scan(self):
         if self.status != 'ready':

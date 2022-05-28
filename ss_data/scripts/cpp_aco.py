@@ -15,6 +15,9 @@ from map import *
 import pandas as pd
 from datetime import datetime
 
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
 np.random.seed(124)
 
 """
@@ -472,7 +475,7 @@ if __name__ == '__main__':
     vpGenerator = ViewPointGenerator()
     vps = vpGenerator.load(os.path.join(args.load, args.vpsfile))
 
-    startIdx = np.random.randint(len(vps))
+    startIdx = 0
     scp = SCPSolver(vps,startIdx,coverage=args.tc)
     minvps = scp.computeMinimumCoveringViewpoints(iter=args.scIter)
     # vpGenerator.save(os.path.join(args.load, args.trajfile),minvps)
@@ -490,8 +493,28 @@ if __name__ == '__main__':
     print("ACO find {} viewpoints for {:.2f}% coverage in {}.".format(len(bestvps), args.tc*100.0, str(t1-t0)))
     traj_file = os.path.join(sys.path[0],'..','trajectory/aco_best.txt')
     vpGenerator.save(traj_file, alterTour(bestvps))
-    # save training statistics
-    # statFile = os.path.join(args.load, "aco.csv")
-    # dict = {'Iteration': [i for i in range(len(progress))], 'Distance': progress}
-    # df = pd.DataFrame(dict)
-    # df.to_csv(statFile)
+
+    # plot
+    iter = [i+1 for i in range(len(progress))]
+    fig = go.Figure()
+    title = "ACO - Traveling Distance"
+    fig.add_trace(go.Scatter(
+        x = iter,
+        y = smoothExponential(progress,0.995),
+        # mode='lines+markers',
+        name="Traveling Distance",
+        marker=dict(color="#552233")
+        # line = dict(shape = 'linear', color = "#552233", width = 1, dash = 'dash')
+        ))
+    fig.update_layout(
+        title=title,
+        xaxis_title="Iteration",
+        yaxis_title="Traveling Distance (m)",
+        font=dict(
+            family="Arial",
+            size=20,
+            color="Black"
+        ),
+        plot_bgcolor="rgb(255,255,255)"
+    )
+    fig.show()

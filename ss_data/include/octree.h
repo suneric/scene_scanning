@@ -149,17 +149,16 @@ namespace ssv3d {
     WSPointCloudPtr VoxelCentroidCloud() const;
 
     WSPointCloudNormalPtr VoxelAverageNormals_Sampling(
+      const std::vector<int>& vxIndices,
       const Eigen::Vector3f& refViewpoint,
       WSPointCloudPtr& voxelCentroid
     ) const;
 
     WSPointCloudNormalPtr VoxelAverageNormals_All(
+      const std::vector<int>& vxIndices,
       const Eigen::Vector3f& refViewpoint,
       WSPointCloudPtr& voxelCentroid
     ) const;
-
-    void FindOutsidePolygons(std::vector<WSPointCloudPtr>& outsidePolygons) const;
-    void VoxelOutsideCenters(std::vector<VoxelNormals>& outsideNormals) const;
 
     // voxel
     WSPoint VoxelCentroid(int index) const;
@@ -172,8 +171,8 @@ namespace ssv3d {
     int BoxSearch(const Eigen::Vector3f& minPt,
                   const Eigen::Vector3f& maxPt,
                   std::vector<int>& indices) const;
-  private:
-    bool IsOutsideVoxel(const WSPoint& point, const Eigen::Vector3f& refNormal);
+
+    int VoxelIndicesInBox(const std::vector<double>& bbox, std::vector<int>& indices) const;
 
 
   private:

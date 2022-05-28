@@ -11,6 +11,7 @@ using namespace ssv3d;
 
 void PCLViewPoint::GenerateCameraPositions(
   const PCLOctree& tree,
+  const std::vector<int>& vxIndices,
   double distance,
   double height_min,
   double height_max,
@@ -18,13 +19,15 @@ void PCLViewPoint::GenerateCameraPositions(
   bool bSampling,
   std::vector<Eigen::Affine3f>& cameras)
 {
+  // get voxel centroid and average normal
   WSPointCloudPtr vCloud;
   WSPointCloudNormalPtr vNormal;
-  if (bSampling)
-    vNormal = tree.VoxelAverageNormals_Sampling(refViewpoint,vCloud);
-  else
-    vNormal = tree.VoxelAverageNormals_All(refViewpoint,vCloud);
-
+  if (bSampling) {
+    vNormal = tree.VoxelAverageNormals_Sampling(vxIndices,refViewpoint,vCloud);
+  } else {
+    vNormal = tree.VoxelAverageNormals_All(vxIndices,refViewpoint,vCloud);
+  }
+  // evaluate camera position
   for (size_t i = 0; i < vCloud->points.size(); ++i)
   {
     Eigen::Vector3f point(vCloud->points[i].x, vCloud->points[i].y, vCloud->points[i].z);
@@ -79,22 +82,40 @@ Eigen::Affine3f PCLViewPoint::CameraMatrix(const Eigen::Vector3f& center, const 
   return res;
 }
 
-bool PCLViewPoint::FilterViewPoint(const PCLOctree& tree, const Eigen::Affine3f& camera)
+bool PCLViewPoint::FilterViewPoint(const PCLOctree& tree, const Eigen::Affine3f& camera, double heightMin, double heightMax)
 {
-  // covered voxel count < 5
+  // covered voxel
   std::vector<int> voxelIndices;
   CameraViewVoxels(tree,camera,voxelIndices);
   int visibleVoxelCount = voxelIndices.size();
-  if (visibleVoxelCount < 6)
+  if (visibleVoxelCount < 5)
+  {
+    std::cout << "visible voxel count " << visibleVoxelCount << " less than 5 "  << std::endl;
     return true;
+  }
 
-  // check conflict bounding box
+  // check height
   Eigen::Matrix4f mat = camera.matrix();
   float x = mat(0,3),y = mat(1,3), z = mat(2,3);
-  Eigen::Vector3f minPt(x-0.05,y-0.05,z-0.3), maxPt(x+0.05,y+0.05,z);
-  std::vector<int> indices;
-  if (tree.BoxSearch(minPt, maxPt, indices) > 0)
-    return true;
+  if (heightMin < heightMax)
+  {
+    if (z < heightMin || z > heightMax){
+      std::cout << "camera height " << z << "out of limits." << std::endl;
+      return true;
+    }
+  }
+
+  // check bounding box conflict
+  Eigen::Vector3f minPt, maxPt;
+  if (QuadrotorBBox(camera, minPt, maxPt))
+  {
+    std::vector<int> indices;
+    if (tree.BoxSearch(minPt, maxPt, indices) > 0)
+    {
+      std::cout << "bounding box conflict " << std::endl;
+      return true;
+    }
+  }
 
   return false;
 }
@@ -302,4 +323,43 @@ Eigen::Affine3f PCLViewPoint::ViewPoint2CameraPose(const Cartesion& vp)
   Eigen::Affine3f res;
   res.matrix() = cam_pose;
   return res;
+}
+
+bool PCLViewPoint::QuadrotorBBox(const Eigen::Affine3f& camera, Eigen::Vector3f& minPt, Eigen::Vector3f& maxPt)
+{
+  Eigen::Vector3f ea = camera.matrix().block<3,3>(0,0).eulerAngles(0,1,2);
+  // the camera coordinate is x-right, y-down, and z-forward
+  // the roll should negative [-pi,0],the camere joint angle is in range [-0.5*PI, 0.5*PI]
+  // the angle for camera joint should be -roll - 0.5*pi
+  double angle = -ea[0]-0.5*M_PI;
+
+  Eigen::Matrix4f cameraBase = Eigen::Matrix4f::Identity();
+  cameraBase(0,3) = 0.42; // offset of camera base
+
+  Eigen::Matrix4f cameraBase2Camera = Eigen::Matrix4f::Identity();
+  cameraBase2Camera(0,0) = cos(angle);
+  cameraBase2Camera(0,2) = sin(angle);
+  cameraBase2Camera(0,3) = 0.0358; // length from joint to camera
+  cameraBase2Camera(1,0) -sin(angle);
+  cameraBase2Camera(1,2) = cos(angle);
+
+  Eigen::Matrix4f camera2Pt = Eigen::Matrix4f::Identity();
+  Eigen::AngleAxisf rollAngle(-0.5*M_PI, Eigen::Vector3f::UnitZ());
+  Eigen::AngleAxisf yawAngle(-0.5*M_PI, Eigen::Vector3f::UnitY());
+  Eigen::AngleAxisf pitchAngle(0, Eigen::Vector3f::UnitX());
+  Eigen::Quaternion<float> q = rollAngle * yawAngle * pitchAngle;
+  camera2Pt.block<3,3>(0,0) = q.normalized().toRotationMatrix();
+
+  Eigen::Matrix4f mat = cameraBase*cameraBase2Camera*camera2Pt;
+  Eigen::Matrix4f quadMat = camera.matrix()*mat.inverse();
+  double qx = quadMat(0,3), qy = quadMat(1,3), qz = quadMat(2,3);
+
+  minPt.x() = qx - 0.3;
+  minPt.y() = qy - 0.3;
+  minPt.z() = qz - 0.3;
+  maxPt.x() = qx + 0.3;
+  maxPt.y() = qy + 0.3;
+  maxPt.z() = qz;
+
+  return true;
 }

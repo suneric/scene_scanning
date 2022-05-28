@@ -1,0 +1,18 @@
+# airliner757.obj
+newmtl Boeing
+Kd 0.8 0.8 0.8
+Ns 256
+d 1
+illum 2
+Ka 0 0 0
+Ks 0.2 0.2 0.2
+map_Kd new_delta.tga
+newmtl Landing_032Gear
+Kd 0.8 0.8 0.8
+Ns 256
+d 1
+illum 2
+Ka 0 0 0
+Ks 0.2 0.2 0.2
+map_Kd landing_gear.tga
+newmtl base
